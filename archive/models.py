@@ -5,12 +5,31 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 # --- МОДЕЛЬ ЗАДАЧИ ---
+# --- ИСПРАВЛЕННАЯ МОДЕЛЬ ЗАДАЧИ ---
 class Problem(models.Model):
     title = models.CharField("Название", max_length=200)
     description = models.TextField("Условие задачи")
     correct_answer = models.CharField("Правильный ответ", max_length=100)
-    difficulty = models.IntegerField("Сложность (например, 800)", default=800)
     
+    # Оставляем только одно поле difficulty
+    difficulty = models.IntegerField("Сложность (например, 800)", default=0)
+    
+    # НОВОЕ ПОЛЕ:
+    DIFFICULTY_CHOICES = [
+        ('bg-info text-dark', 'Baby (Голубой)'),
+        ('bg-success', 'Easy (Зеленый)'),
+        ('bg-primary', 'Normal (Синий)'),
+        ('bg-warning text-dark', 'Hard (Желтый)'),
+        ('bg-danger', 'Legendary (Красный)'),
+        ('bg-dark', 'X-Level (Черный)'),
+    ]
+    difficulty_level = models.CharField(
+        "Цветовой уровень",
+        max_length=50, 
+        choices=DIFFICULTY_CHOICES, 
+        default='bg-primary'
+    )
+
     def __str__(self):
         return self.title
 

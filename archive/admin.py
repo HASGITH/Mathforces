@@ -1,27 +1,27 @@
 from django.contrib import admin
-from .models import Problem, Submission
-from .models import Rank # Добавь в импорты
-from .models import Contest, Profile, RatingHistory
-admin.site.register(Problem)
-admin.site.register(Submission)
+from .models import Problem, Submission, Contest, Profile, Rank, RatingHistory
 
+# 1. ПРАВИЛЬНАЯ настройка для ЗАДАЧ (Problem)
+@admin.register(Problem)
+class ProblemAdmin(admin.ModelAdmin):
+    # Эти поля есть в модели Problem
+    list_display = ('title', 'difficulty', 'difficulty_level') 
+    list_editable = ('difficulty', 'difficulty_level') # Чтобы менять прямо из списка
 
-@admin.register(Contest)
-class ContestAdmin(admin.ModelAdmin):
-    list_display = ('title', 'start_time', 'end_time')
-    filter_horizontal = ('problems',)
-
+# 2. ПРАВИЛЬНАЯ настройка для ПРОФИЛЕЙ (Profile)
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'is_disqualified', 'reason']
-    list_filter = ['is_disqualified']
-    search_fields = ['user__username']
+    # В Profile есть поля user и rating
+    list_display = ('user', 'rating', 'is_disqualified')
+    search_fields = ('user__username',)
 
-@admin.register(Rank)
-class RankAdmin(admin.ModelAdmin):
-    list_display = ('title', 'min_rating', 'color_code')
-
-@admin.register(RatingHistory)
-class RatingHistoryAdmin(admin.ModelAdmin):
-    list_display = ('user', 'rating', 'date', 'contest')
-    list_filter = ('user', 'date')
+# 3. Остальные модели (если они еще не зарегистрированы)
+# Если ты уже регистрировал их через @admin.register выше, эти строки не нужны
+if not admin.site.is_registered(Submission):
+    admin.site.register(Submission)
+if not admin.site.is_registered(Contest):
+    admin.site.register(Contest)
+if not admin.site.is_registered(Rank):
+    admin.site.register(Rank)
+if not admin.site.is_registered(RatingHistory):
+    admin.site.register(RatingHistory)

@@ -7,6 +7,15 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        .badge-custom {
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-radius: 50px;
+            padding: 0.4em 0.8em;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
@@ -84,7 +93,9 @@
                                             </div>
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge bg-primary px-3 py-2" style="font-size: 0.75rem;">{{ problem.difficulty }}</span>
+                                            <span class="badge badge-custom {{ problem.difficulty_level }} shadow-sm">
+                                                {{ problem.difficulty }}
+                                            </span>
                                         </td>
                                     </tr>
                                     {% empty %}
