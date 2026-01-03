@@ -1,32 +1,55 @@
 import math
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
 from django.urls import reverse_lazy
 from django.views import generic
 from django.contrib.auth.decorators import login_required
-from .models import Problem, Submission, Contest, Profile, Rank, RatingHistory # Добавь Rank в конец
+from .models import Problem, Submission, Contest, Profile, Rank, RatingHistory
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db.models import Q
-from django.shortcuts import redirect
 from django.core.paginator import Paginator
 
 # --- АРХИВ ---
 def problem_list(request):
-    problems = Problem.objects.all()
+    now = timezone.now()
+    # Показываем задачи, которые:
+    # 1. Либо не привязаны ни к одному контесту
+    # 2. Либо привязаны к контесту, который уже начался
+    # staff_member (админ) видит всё
+    if request.user.is_staff:
+        problems = Problem.objects.all()
+    else:
+        problems = Problem.objects.filter(
+            Q(contests__isnull=True) | Q(contests__start_time__lte=now)
+        ).distinct()
+
     solved_ids = []
     if request.user.is_authenticated:
         solved_ids = Submission.objects.filter(
             author=request.user, 
             is_correct=True
         ).values_list('problem_id', flat=True).distinct()
+    
     return render(request, 'archive/problem_list.html', {'problems': problems, 'solved_ids': solved_ids})
 
 def problem_detail(request, pk, contest_id=None):
     problem = get_object_or_404(Problem, pk=pk)
     now = timezone.now()
+    
+    # ПРОВЕРКА ДОСТУПА:
+    # Если задача привязана к контестам, которые еще не начались, и юзер не админ
+    if not request.user.is_staff:
+        future_contests = problem.contests.filter(start_time__gt=now)
+        # Если у задачи НЕТ контестов, которые уже начались или прошли
+        has_started_contest = problem.contests.filter(start_time__lte=now).exists()
+        
+        if future_contests.exists() and not has_started_contest:
+            messages.error(request, "Эта задача еще не опубликована.")
+            return redirect('problem_list')
+
     contest = None
     if contest_id:
         contest = get_object_or_404(Contest, pk=contest_id)
@@ -56,7 +79,16 @@ def problem_detail(request, pk, contest_id=None):
 
 # --- ПОСЫЛКИ ---
 def submission_list(request):
-    submissions = Submission.objects.all().order_by('-submitted_at')[:50]
+    # В идеале здесь тоже стоит фильтровать посылки к скрытым задачам, 
+    # чтобы люди не видели ответы в ленте раньше времени
+    now = timezone.now()
+    if request.user.is_staff:
+        submissions = Submission.objects.all().order_by('-submitted_at')[:50]
+    else:
+        submissions = Submission.objects.filter(
+            Q(problem__contests__isnull=True) | Q(problem__contests__start_time__lte=now)
+        ).distinct().order_by('-submitted_at')[:50]
+        
     return render(request, 'archive/submission_list.html', {'submissions': submissions})
 
 def submission_detail(request, pk):
@@ -72,6 +104,13 @@ def contest_list(request):
 
 def contest_dashboard(request, pk):
     contest = get_object_or_404(Contest, pk=pk)
+    now = timezone.now()
+
+    # Если контест еще не начался — не пускаем никого, кроме админов
+    if contest.start_time > now and not request.user.is_staff:
+        messages.warning(request, f"Соревнование начнется в {contest.start_time}")
+        return redirect('contest_list')
+
     problems = contest.problems.all()
     solved_ids = Submission.objects.filter(author=request.user, is_correct=True).values_list('problem_id', flat=True).distinct() if request.user.is_authenticated else []
     return render(request, 'archive/contest_dashboard.html', {'contest': contest, 'problems': problems, 'solved_ids': solved_ids})
@@ -107,17 +146,14 @@ class SignUpView(generic.CreateView):
 
 @login_required
 def profile_view(request):
-    # Твой собственный профиль
     user_obj = request.user 
     profile = user_obj.profile
-    
-    # Считаем данные
     solved_count = Submission.objects.filter(author=user_obj, is_correct=True).values('problem').distinct().count()
     current_rank = Rank.objects.filter(min_rating__lte=profile.rating).order_by('-min_rating').first()
     submissions = Submission.objects.filter(author=user_obj).order_by('-submitted_at')[:15]
     
     return render(request, 'archive/profile.html', {
-        'target_user': user_obj,  # ОБЯЗАТЕЛЬНО: добавляем эту строку
+        'target_user': user_obj,
         'profile': profile,
         'solved_count': solved_count,
         'submissions': submissions,
@@ -127,18 +163,15 @@ def profile_view(request):
 @staff_member_required
 def calculate_contest_rating(request, pk):
     contest = get_object_or_404(Contest, pk=pk)
-    
-    # Собираем все посылки во время контеста
     submissions = Submission.objects.filter(
         problem__in=contest.problems.all(),
         submitted_at__gte=contest.start_time,
         submitted_at__lte=contest.end_time
     )
     
-    # 1. Собираем участников, НО исключаем тех, кто забанен (is_disqualified=True)
     author_list = list({
         sub.author for sub in submissions 
-        if not sub.author.profile.is_disqualified  # <-- ВОТ ЭТА ПРОВЕРКА
+        if not sub.author.profile.is_disqualified
     })
     
     participants = []
@@ -151,12 +184,10 @@ def calculate_contest_rating(request, pk):
             'change': 0
         })
 
-    # Если после фильтрации никого не осталось (все забанены или никто не участвовал)
     if not participants:
-        messages.warning(request, "Нет активных участников (не забаненных) для начисления рейтинга.")
+        messages.warning(request, "Нет активных участников для начисления рейтинга.")
         return redirect('contest_standings', pk=pk)
 
-    # 2. Алгоритм Эло (сравнение каждого с каждым)
     K = 40
     for i in range(len(participants)):
         for j in range(len(participants)):
@@ -168,7 +199,6 @@ def calculate_contest_rating(request, pk):
             else: actual = 0.5
             p1['change'] += K * (actual - expected)
 
-    # 3. Применяем изменения + БОНУСЫ
     for p in participants:
         user = p['user']
         past_contests = Submission.objects.filter(author=user, submitted_at__lt=contest.start_time).values('problem__contests').distinct().count()
@@ -182,21 +212,19 @@ def calculate_contest_rating(request, pk):
         profile.rating += int(p['change'] + bonus)
         profile.save()
 
-        # ДОБАВЬ ЭТО:
         RatingHistory.objects.create(
             user=user, 
             rating=profile.rating, 
             contest=contest
         )
         
-    messages.success(request, f"Рейтинг начислен для {len(participants)} честных участников! Забаненные игроки проигнорированы.")
+    messages.success(request, f"Рейтинг начислен для {len(participants)} участников!")
     return redirect('contest_standings', pk=pk)
 
 def user_profile_view(request, username):
     target_user = get_object_or_404(User, username=username)
     profile = target_user.profile
     
-    # Проверка, является ли этот пользователь другом для текущего
     is_friend = False
     if request.user.is_authenticated:
         is_friend = request.user.profile.friends.filter(id=target_user.id).exists()
@@ -206,7 +234,7 @@ def user_profile_view(request, username):
     submissions = Submission.objects.filter(author=target_user).order_by('-submitted_at')[:15]
     
     return render(request, 'archive/profile.html', {
-        'target_user': target_user, # Используем target_user, чтобы не путать с request.user
+        'target_user': target_user,
         'profile': profile,
         'solved_count': solved_count,
         'submissions': submissions,
@@ -232,18 +260,12 @@ def user_search(request):
 
 @login_required
 def friends_list_view(request):
-    # Получаем список друзей из профиля текущего пользователя
     friends = request.user.profile.friends.all().select_related('profile')
     return render(request, 'archive/friends_list.html', {'friends': friends})
 
 def ranking_view(request):
-    # Получаем всех пользователей, у которых есть профиль, сортируем по рейтингу
     users_list = User.objects.select_related('profile').order_by('-profile__rating', 'username')
-    
-    # Разбиваем список на страницы (по 100 человек на каждой)
     paginator = Paginator(users_list, 100) 
-    
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
     return render(request, 'archive/ranking.html', {'page_obj': page_obj})
