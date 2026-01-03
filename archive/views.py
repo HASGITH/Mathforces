@@ -15,10 +15,6 @@ from django.core.paginator import Paginator
 # --- АРХИВ ---
 def problem_list(request):
     now = timezone.now()
-    # Показываем задачи, которые:
-    # 1. Либо не привязаны ни к одному контесту
-    # 2. Либо привязаны к контесту, который уже начался
-    # staff_member (админ) видит всё
     if request.user.is_staff:
         problems = Problem.objects.all()
     else:
@@ -39,11 +35,8 @@ def problem_detail(request, pk, contest_id=None):
     problem = get_object_or_404(Problem, pk=pk)
     now = timezone.now()
     
-    # ПРОВЕРКА ДОСТУПА:
-    # Если задача привязана к контестам, которые еще не начались, и юзер не админ
     if not request.user.is_staff:
         future_contests = problem.contests.filter(start_time__gt=now)
-        # Если у задачи НЕТ контестов, которые уже начались или прошли
         has_started_contest = problem.contests.filter(start_time__lte=now).exists()
         
         if future_contests.exists() and not has_started_contest:
@@ -55,6 +48,8 @@ def problem_detail(request, pk, contest_id=None):
         contest = get_object_or_404(Contest, pk=contest_id)
     
     active_contest = contest or problem.contests.filter(start_time__lte=now, end_time__gte=now).first()
+    
+    # Проверка бана текущего пользователя
     is_banned = getattr(request.user.profile, 'is_disqualified', False) if request.user.is_authenticated else False
 
     result = None
@@ -79,13 +74,14 @@ def problem_detail(request, pk, contest_id=None):
 
 # --- ПОСЫЛКИ ---
 def submission_list(request):
-    # В идеале здесь тоже стоит фильтровать посылки к скрытым задачам, 
-    # чтобы люди не видели ответы в ленте раньше времени
     now = timezone.now()
+    # Скрываем посылки дисквалифицированных пользователей из общей ленты
+    base_query = Submission.objects.filter(author__profile__is_disqualified=False)
+    
     if request.user.is_staff:
         submissions = Submission.objects.all().order_by('-submitted_at')[:50]
     else:
-        submissions = Submission.objects.filter(
+        submissions = base_query.filter(
             Q(problem__contests__isnull=True) | Q(problem__contests__start_time__lte=now)
         ).distinct().order_by('-submitted_at')[:50]
         
@@ -93,6 +89,11 @@ def submission_list(request):
 
 def submission_detail(request, pk):
     submission = get_object_or_404(Submission, pk=pk)
+    # Если автор забанен, доступ только ему самому или админу
+    if submission.author.profile.is_disqualified and not request.user.is_staff and request.user != submission.author:
+        messages.error(request, "Эта посылка недоступна.")
+        return redirect('submission_list')
+
     active_contests = submission.problem.contests.filter(start_time__lte=timezone.now(), end_time__gte=timezone.now())
     can_view = (request.user == submission.author or request.user.is_staff or not active_contests.exists())
     return render(request, 'archive/submission_detail.html', {'submission': submission, 'can_view': can_view})
@@ -106,7 +107,6 @@ def contest_dashboard(request, pk):
     contest = get_object_or_404(Contest, pk=pk)
     now = timezone.now()
 
-    # Если контест еще не начался — не пускаем никого, кроме админов
     if contest.start_time > now and not request.user.is_staff:
         messages.warning(request, f"Соревнование начнется в {contest.start_time}")
         return redirect('contest_list')
@@ -118,7 +118,13 @@ def contest_dashboard(request, pk):
 def contest_standings(request, pk):
     contest = get_object_or_404(Contest, pk=pk)
     problems = contest.problems.all()
-    submissions = Submission.objects.filter(problem__in=problems, submitted_at__gte=contest.start_time, submitted_at__lte=contest.end_time)
+    # В таблице результатов контеста оставляем только тех, кто НЕ забанен
+    submissions = Submission.objects.filter(
+        problem__in=problems, 
+        submitted_at__gte=contest.start_time, 
+        submitted_at__lte=contest.end_time,
+        author__profile__is_disqualified=False
+    )
     users = {sub.author for sub in submissions}
     results = []
     for user in users:
@@ -138,27 +144,86 @@ def contest_standings(request, pk):
     results.sort(key=lambda x: (-x['solved'], x['penalty']))
     return render(request, 'archive/contest_standings.html', {'contest': contest, 'results': results, 'problems': problems})
 
-# --- АККАУНТЫ ---
+# --- АККАУНТЫ И РАНКИНГ ---
 class SignUpView(generic.CreateView):
     form_class = UserCreationForm
     success_url = reverse_lazy('login')
     template_name = 'registration/signup.html'
 
-@login_required
-def profile_view(request):
-    user_obj = request.user 
-    profile = user_obj.profile
-    solved_count = Submission.objects.filter(author=user_obj, is_correct=True).values('problem').distinct().count()
+def ranking_view(request):
+    # Показываем только тех, кто НЕ дисквалифицирован
+    users_list = User.objects.filter(profile__is_disqualified=False).select_related('profile').order_by('-profile__rating', 'username')
+    
+    paginator = Paginator(users_list, 100) 
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'archive/ranking.html', {'page_obj': page_obj})
+
+def user_profile_view(request, username):
+    target_user = get_object_or_404(User, username=username)
+    
+    # Если пользователь забанен, его профиль видит только он сам или админ
+    if target_user.profile.is_disqualified and not request.user.is_staff and request.user != target_user:
+        messages.error(request, "Этот пользователь дисквалифицирован.")
+        return redirect('ranking_view')
+
+    profile = target_user.profile
+    is_friend = False
+    if request.user.is_authenticated:
+        is_friend = request.user.profile.friends.filter(id=target_user.id).exists()
+
+    solved_count = Submission.objects.filter(author=target_user, is_correct=True).values('problem').distinct().count()
     current_rank = Rank.objects.filter(min_rating__lte=profile.rating).order_by('-min_rating').first()
-    submissions = Submission.objects.filter(author=user_obj).order_by('-submitted_at')[:15]
+    submissions = Submission.objects.filter(author=target_user).order_by('-submitted_at')[:15]
     
     return render(request, 'archive/profile.html', {
-        'target_user': user_obj,
+        'target_user': target_user,
         'profile': profile,
         'solved_count': solved_count,
         'submissions': submissions,
         'rank': current_rank,
+        'is_friend': is_friend,
     })
+
+@login_required
+def profile_view(request):
+    # Редирект на именной профиль текущего юзера
+    return user_profile_view(request, request.user.username)
+
+@login_required
+def toggle_friend(request, username):
+    target_user = get_object_or_404(User, username=username)
+    # Нельзя дружить с забаненными
+    if target_user.profile.is_disqualified:
+        messages.error(request, "Нельзя добавить в друзья дисквалифицированного пользователя.")
+        return redirect('ranking_view')
+        
+    if target_user != request.user:
+        profile = request.user.profile
+        if profile.friends.filter(id=target_user.id).exists():
+            profile.friends.remove(target_user)
+        else:
+            profile.friends.add(target_user)
+    return redirect('user_profile', username=username)
+
+def user_search(request):
+    query = request.GET.get('q', '')
+    # Ищем только по тем, кто НЕ дисквалифицирован
+    if query:
+        users = User.objects.filter(
+            username__icontains=query,
+            profile__is_disqualified=False
+        ).select_related('profile')
+    else:
+        users = []
+        
+    return render(request, 'archive/user_search.html', {'users': users, 'query': query})
+
+@login_required
+def friends_list_view(request):
+    # Прячем дисквалифицированных из списка друзей
+    friends = request.user.profile.friends.filter(profile__is_disqualified=False).select_related('profile')
+    return render(request, 'archive/friends_list.html', {'friends': friends})
 
 @staff_member_required
 def calculate_contest_rating(request, pk):
@@ -220,52 +285,3 @@ def calculate_contest_rating(request, pk):
         
     messages.success(request, f"Рейтинг начислен для {len(participants)} участников!")
     return redirect('contest_standings', pk=pk)
-
-def user_profile_view(request, username):
-    target_user = get_object_or_404(User, username=username)
-    profile = target_user.profile
-    
-    is_friend = False
-    if request.user.is_authenticated:
-        is_friend = request.user.profile.friends.filter(id=target_user.id).exists()
-
-    solved_count = Submission.objects.filter(author=target_user, is_correct=True).values('problem').distinct().count()
-    current_rank = Rank.objects.filter(min_rating__lte=profile.rating).order_by('-min_rating').first()
-    submissions = Submission.objects.filter(author=target_user).order_by('-submitted_at')[:15]
-    
-    return render(request, 'archive/profile.html', {
-        'target_user': target_user,
-        'profile': profile,
-        'solved_count': solved_count,
-        'submissions': submissions,
-        'rank': current_rank,
-        'is_friend': is_friend,
-    })
-
-@login_required
-def toggle_friend(request, username):
-    target_user = get_object_or_404(User, username=username)
-    if target_user != request.user:
-        profile = request.user.profile
-        if profile.friends.filter(id=target_user.id).exists():
-            profile.friends.remove(target_user)
-        else:
-            profile.friends.add(target_user)
-    return redirect('user_profile', username=username)
-
-def user_search(request):
-    query = request.GET.get('q', '')
-    users = User.objects.filter(username__icontains=query).select_related('profile') if query else []
-    return render(request, 'archive/user_search.html', {'users': users, 'query': query})
-
-@login_required
-def friends_list_view(request):
-    friends = request.user.profile.friends.all().select_related('profile')
-    return render(request, 'archive/friends_list.html', {'friends': friends})
-
-def ranking_view(request):
-    users_list = User.objects.select_related('profile').order_by('-profile__rating', 'username')
-    paginator = Paginator(users_list, 100) 
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'archive/ranking.html', {'page_obj': page_obj})
