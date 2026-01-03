@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Результаты - {{ contest.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success shadow-sm">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <h1 class="mb-4 text-center">{{ contest.title }} — Результаты</h1>
+        
+        <div class="card shadow-sm border-0 overflow-hidden">
+            <table class="table table-bordered bg-white mb-0 text-center align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Участник</th>
+                        <th>Решено</th>
+                        <th>Штраф</th>
+                        {% for problem in problems %}
+                            <th>{{ forloop.counter }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in results %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <strong>{{ res.user.username }}</strong>
+                            <br><small class="text-muted">Рейтинг: {{ res.user.profile.rating }}</small>
+                        </td>
+                        <td class="fw-bold text-primary fs-5">{{ res.solved }}</td>
+                        <td>{{ res.penalty }}</td>
+                        {% for p_stat in res.problems %}
+                            <td class="{% if p_stat.status == 'OK' %}table-success{% elif p_stat.failed > 0 %}table-danger{% endif %}">
+                                {% if p_stat.status == 'OK' %}
+                                    <div class="fw-bold">+{% if p_stat.failed > 0 %}{{ p_stat.failed }}{% endif %}</div>
+                                    <div class="small text-muted">{{ p_stat.time }}</div>
+                                {% elif p_stat.failed > 0 %}
+                                    <div class="fw-bold">-{{ p_stat.failed }}</div>
+                                {% else %}
+                                    <span class="text-muted">.</span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ problems.count|add:4 }}" class="p-5 text-muted">
+                            Пока никто не отправил решение. Стань первым!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 d-flex justify-content-between">
+            <a href="{% url 'contest_dashboard' contest.id %}" class="btn btn-secondary px-4">Назад к задачам</a>
+            
+            {% if user.is_staff %}
+                <form action="{% url 'calculate_rating' contest.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger shadow-sm" onclick="return confirm('Вы уверены? Рейтинг будет начислен всем участникам!')">
+                        🚀 Завершить контест и раздать рейтинг
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

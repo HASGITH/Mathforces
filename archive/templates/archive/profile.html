@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Профиль {{ target_user.username }} - Mathforces</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .rating-number { font-size: 1.5rem; font-weight: bold; }
+        .rank-title { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn-friend { border-radius: 20px; padding: 5px 20px; transition: 0.3s; }
+        .stat-link { text-decoration: none; color: inherit; transition: 0.2s; }
+        .stat-link:hover { opacity: 0.7; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'problem_list' %}"><b>MATHFORCES</b></a>
+            <form class="d-flex ms-auto" action="{% url 'user_search' %}" method="GET">
+                <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Поиск пользователей">
+                <button class="btn btn-outline-light btn-sm" type="submit">Найти</button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card p-4 text-center mb-4">
+                    <div class="mb-3">
+                        <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px; font-size: 2rem;">
+                            {{ target_user.username|first|upper }}
+                        </div>
+                    </div>
+                    
+                    <h4 class="mb-1">{{ target_user.username }}</h4>
+                    
+                    <div class="mb-2">
+                        {% if rank %}
+                            <span class="rank-title fw-bold" style="color: {{ rank.color_code }};">{{ rank.title }}</span>
+                        {% else %}
+                            <span class="text-muted small">НОВИЧОК</span>
+                        {% endif %}
+                    </div>
+
+                    {% if request.user.is_authenticated and request.user != target_user %}
+                        <form action="{% url 'toggle_friend' target_user.username %}" method="POST" class="mb-3">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if is_friend %}btn-outline-danger{% else %}btn-primary{% endif %} btn-friend w-100">
+                                {% if is_friend %}Удалить из друзей{% else %}Добавить в друзья{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if profile.is_disqualified %}
+                        <span class="badge bg-danger mb-3">ДИСКВАЛИФИЦИРОВАН</span>
+                    {% else %}
+                        <span class="badge bg-success mb-3">АКТИВЕН</span>
+                    {% endif %}
+                    
+                    <hr>
+
+                    <div class="row text-center">
+                        <div class="col">
+                            <div class="rating-number text-primary">{{ profile.rating }}</div>
+                            <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Рейтинг</small>
+                        </div>
+                        <div class="col border-start border-end">
+                            <div class="rating-number">{{ solved_count }}</div>
+                            <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Решено</small>
+                        </div>
+                        <div class="col">
+                            <a href="{% url 'friends_list' %}" class="stat-link">
+                                <div class="rating-number text-success">{{ target_user.profile.friends.count }}</div>
+                                <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Друзья</small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card p-4 mb-4">
+                    <h5 class="mb-3">График рейтинга</h5>
+                    <div style="height: 300px;">
+                        <canvas id="ratingChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h5 class="mb-4">Последние посылки</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Задача</th>
+                                    <th>Результат</th>
+                                    <th>Дата</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in submissions %}
+                                <tr>
+                                    <td><a href="{% url 'problem_detail' sub.problem.id %}" class="text-decoration-none text-dark fw-medium">{{ sub.problem.title }}</a></td>
+                                    <td>
+                                        <a href="{% url 'submission_detail' sub.id %}" class="text-decoration-none">
+                                            {% if sub.is_correct %}
+                                                <span class="badge bg-success">OK</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">WA</span>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td class="text-muted small">{{ sub.submitted_at|date:"d.m H:i" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center py-4 text-muted">Посылок пока нет</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Данные выносим в переменные, чтобы Chart.js было удобнее работать
+        const ratingLabels = [{% for entry in target_user.rating_history.all %}"{{ entry.date|date:'d.m' }}",{% endfor %}];
+        const ratingData = [{% for entry in target_user.rating_history.all %}{{ entry.rating }},{% endfor %}];
+
+        const ctx = document.getElementById('ratingChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ratingLabels,
+                datasets: [{
+                    label: 'Рейтинг',
+                    data: ratingData,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#0d6efd',
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { 
+                    y: { 
+                        beginAtZero: false,
+                        grid: { color: '#f0f0f0' }
+                    },
+                    x: { grid: { display: false } }
+                },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: { backgroundColor: '#333' }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
