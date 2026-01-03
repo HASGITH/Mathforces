@@ -67,13 +67,20 @@
                                     <tr>
                                         <td class="text-muted">{{ problem.id }}</td>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <a href="{% url 'problem_detail' problem.id %}" class="text-decoration-none fw-bold me-2 text-dark">
-                                                    {{ problem.title }}
-                                                </a>
-                                                {% if problem.id in solved_ids %}
-                                                    <span class="badge bg-success rounded-circle" title="Решено" style="padding: 0.35em 0.5em;">✓</span>
-                                                {% endif %}
+                                            <div class="d-flex flex-column">
+                                                <div class="d-flex align-items-center">
+                                                    <a href="{% url 'problem_detail' problem.id %}" class="text-decoration-none fw-bold me-2 text-dark">
+                                                        {{ problem.title }}
+                                                    </a>
+                                                    {% if problem.id in solved_ids %}
+                                                        <span class="badge bg-success rounded-circle" title="Решено" style="padding: 0.35em 0.5em;">✓</span>
+                                                    {% endif %}
+                                                </div>
+                                                <small>
+                                                    <a href="{% url 'submission_list' %}?problem_id={{ problem.id }}&status=correct" class="text-success text-decoration-none" style="font-size: 0.75rem;">
+                                                        [Посмотреть все верные решения]
+                                                    </a>
+                                                </small>
                                             </div>
                                         </td>
                                         <td class="text-center">

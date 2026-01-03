@@ -75,11 +75,20 @@ def problem_detail(request, pk, contest_id=None):
 # --- ПОСЫЛКИ ---
 def submission_list(request):
     now = timezone.now()
-    # Скрываем посылки дисквалифицированных пользователей из общей ленты
+    # Базовый запрос: скрываем забаненных
     base_query = Submission.objects.filter(author__profile__is_disqualified=False)
     
+    # ФИЛЬТРАЦИЯ ДЛЯ ССЫЛКИ ИЗ АРХИВА
+    problem_id = request.GET.get('problem_id')
+    status = request.GET.get('status')
+    
+    if problem_id:
+        base_query = base_query.filter(problem_id=problem_id)
+    if status == 'correct':
+        base_query = base_query.filter(is_correct=True)
+
     if request.user.is_staff:
-        submissions = Submission.objects.all().order_by('-submitted_at')[:50]
+        submissions = base_query.order_by('-submitted_at')[:50]
     else:
         submissions = base_query.filter(
             Q(problem__contests__isnull=True) | Q(problem__contests__start_time__lte=now)
@@ -285,3 +294,18 @@ def calculate_contest_rating(request, pk):
         
     messages.success(request, f"Рейтинг начислен для {len(participants)} участников!")
     return redirect('contest_standings', pk=pk)
+
+@staff_member_required
+def manual_update_submission(request, pk, action):
+    submission = get_object_or_404(Submission, pk=pk)
+    if action == 'make_correct':
+        submission.is_correct = True
+    elif action == 'make_incorrect':
+        submission.is_correct = False
+    submission.save()
+    
+    messages.success(request, f"Статус посылки #{submission.id} изменен.")
+    return redirect('submission_detail', pk=pk)
+
+# В функции problem_list в контекст ничего добавлять не нужно, 
+# мы просто используем ID задачи в шаблоне для фильтрации.

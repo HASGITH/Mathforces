@@ -25,4 +25,5 @@ urlpatterns = [
     path('friends/', views.friends_list_view, name='friends_list'),
 
     path('ranking/', views.ranking_view, name='ranking'),
+    path('submission/<int:pk>/manual/<str:action>/', views.manual_update_submission, name='manual_update_submission'),
 ]
