@@ -1,38 +1,42 @@
 from django.contrib import admin
 from .models import Problem, Submission, Contest, Profile, Rank, RatingHistory
 
-# 1. Настройка для ЗАДАЧ (Problem)
-# Мы добавили 'id' для удобства и 'list_display_links', чтобы заголовок остался ссылкой
+# Сначала снимаем регистрацию, если она была, чтобы не было ошибок
+if admin.site.is_registered(Problem):
+    admin.site.unregister(Problem)
+
 @admin.register(Problem)
 class ProblemAdmin(admin.ModelAdmin):
+    # Колонки, которые будут видны в таблице
     list_display = ('id', 'title', 'difficulty', 'difficulty_level') 
-    list_display_links = ('id', 'title') # Клик по ID или названию откроет задачу
-    list_editable = ('difficulty', 'difficulty_level') # Редактирование прямо в списке
-    list_filter = ('difficulty_level',) # Фильтр справа по цветам
+    
+    # Ссылка на редактирование будет на ID и Названии
+    list_display_links = ('id', 'title') 
+    
+    # ЭТИ ПОЛЯ МОЖНО БУДЕТ ПРАВИТЬ ПРЯМО В ТАБЛИЦЕ
+    list_editable = ('difficulty', 'difficulty_level') 
+    
+    # Фильтр справа
+    list_filter = ('difficulty_level',) 
+    
+    # Поиск
     search_fields = ('title',)
 
-# 2. Настройка для ПРОФИЛЕЙ (Profile)
-@admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'rating', 'is_disqualified')
-    search_fields = ('user__username',)
-    list_editable = ('is_disqualified',) # Чтобы быстро банить/разбанивать
+# Регистрация остальных моделей (проверь, чтобы не дублировались ниже)
+if not admin.site.is_registered(Profile):
+    @admin.register(Profile)
+    class ProfileAdmin(admin.ModelAdmin):
+        list_display = ('user', 'rating', 'is_disqualified')
+        list_editable = ('is_disqualified',)
 
-# 3. Регистрация остальных моделей
-# Чтобы избежать ошибок "AlreadyRegistered", регистрируем их простым списком
-@admin.register(Submission)
-class SubmissionAdmin(admin.ModelAdmin):
-    list_display = ('author', 'problem', 'is_correct', 'submitted_at')
-    list_filter = ('is_correct', 'problem')
+if not admin.site.is_registered(Submission):
+    admin.site.register(Submission)
 
-@admin.register(Contest)
-class ContestAdmin(admin.ModelAdmin):
-    list_display = ('title', 'start_time', 'end_time')
+if not admin.site.is_registered(Contest):
+    admin.site.register(Contest)
 
-@admin.register(Rank)
-class RankAdmin(admin.ModelAdmin):
-    list_display = ('title', 'min_rating', 'color_code')
+if not admin.site.is_registered(Rank):
+    admin.site.register(Rank)
 
-@admin.register(RatingHistory)
-class RatingHistoryAdmin(admin.ModelAdmin):
-    list_display = ('user', 'rating', 'date', 'contest')
+if not admin.site.is_registered(RatingHistory):
+    admin.site.register(RatingHistory)
