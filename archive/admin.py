@@ -1,42 +1,42 @@
 from django.contrib import admin
 from .models import Problem, Submission, Contest, Profile, Rank, RatingHistory
 
-# Сначала снимаем регистрацию, если она была, чтобы не было ошибок
-if admin.site.is_registered(Problem):
+# Сначала принудительно отменяем регистрацию, чтобы сбросить старый вид
+try:
     admin.site.unregister(Problem)
+except admin.sites.NotRegistered:
+    pass
 
 @admin.register(Problem)
 class ProblemAdmin(admin.ModelAdmin):
-    # Колонки, которые будут видны в таблице
+    # ТЕПЕРЬ ТЫ УВИДИШЬ ЭТИ КОЛОНКИ:
     list_display = ('id', 'title', 'difficulty', 'difficulty_level') 
     
-    # Ссылка на редактирование будет на ID и Названии
+    # Клик по названию откроет задачу
     list_display_links = ('id', 'title') 
     
-    # ЭТИ ПОЛЯ МОЖНО БУДЕТ ПРАВИТЬ ПРЯМО В ТАБЛИЦЕ
+    # ВОТ ЭТО ПОЗВОЛИТ МЕНЯТЬ ЦВЕТА ПРЯМО В СПИСКЕ:
     list_editable = ('difficulty', 'difficulty_level') 
     
-    # Фильтр справа
-    list_filter = ('difficulty_level',) 
-    
-    # Поиск
+    # Фильтр справа для удобства
+    list_filter = ('difficulty_level',)
     search_fields = ('title',)
 
-# Регистрация остальных моделей (проверь, чтобы не дублировались ниже)
-if not admin.site.is_registered(Profile):
-    @admin.register(Profile)
-    class ProfileAdmin(admin.ModelAdmin):
-        list_display = ('user', 'rating', 'is_disqualified')
-        list_editable = ('is_disqualified',)
+# Регистрация профилей с быстрым баном
+try:
+    admin.site.unregister(Profile)
+except admin.sites.NotRegistered:
+    pass
 
-if not admin.site.is_registered(Submission):
-    admin.site.register(Submission)
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'rating', 'is_disqualified')
+    list_editable = ('is_disqualified',)
 
-if not admin.site.is_registered(Contest):
-    admin.site.register(Contest)
-
-if not admin.site.is_registered(Rank):
-    admin.site.register(Rank)
-
-if not admin.site.is_registered(RatingHistory):
-    admin.site.register(RatingHistory)
+# Остальные модели просто регистрируем, если они еще не в системе
+models_to_register = [Submission, Contest, Rank, RatingHistory]
+for model in models_to_register:
+    try:
+        admin.site.register(model)
+    except admin.site.AlreadyRegistered:
+        pass
