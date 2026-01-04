@@ -49,7 +49,6 @@ def problem_detail(request, pk, contest_id=None):
     
     active_contest = contest or problem.contests.filter(start_time__lte=now, end_time__gte=now).first()
     
-    # Проверка бана текущего пользователя
     is_banned = getattr(request.user.profile, 'is_disqualified', False) if request.user.is_authenticated else False
 
     result = None
@@ -75,10 +74,8 @@ def problem_detail(request, pk, contest_id=None):
 # --- ПОСЫЛКИ ---
 def submission_list(request):
     now = timezone.now()
-    # Базовый запрос: скрываем забаненных
     base_query = Submission.objects.filter(author__profile__is_disqualified=False)
     
-    # ФИЛЬТРАЦИЯ ДЛЯ ССЫЛКИ ИЗ АРХИВА
     problem_id = request.GET.get('problem_id')
     status = request.GET.get('status')
     
@@ -98,7 +95,6 @@ def submission_list(request):
 
 def submission_detail(request, pk):
     submission = get_object_or_404(Submission, pk=pk)
-    # Если автор забанен, доступ только ему самому или админу
     if submission.author.profile.is_disqualified and not request.user.is_staff and request.user != submission.author:
         messages.error(request, "Эта посылка недоступна.")
         return redirect('submission_list')
@@ -127,7 +123,6 @@ def contest_dashboard(request, pk):
 def contest_standings(request, pk):
     contest = get_object_or_404(Contest, pk=pk)
     problems = contest.problems.all()
-    # В таблице результатов контеста оставляем только тех, кто НЕ забанен
     submissions = Submission.objects.filter(
         problem__in=problems, 
         submitted_at__gte=contest.start_time, 
@@ -160,9 +155,7 @@ class SignUpView(generic.CreateView):
     template_name = 'registration/signup.html'
 
 def ranking_view(request):
-    # Показываем только тех, кто НЕ дисквалифицирован
     users_list = User.objects.filter(profile__is_disqualified=False).select_related('profile').order_by('-profile__rating', 'username')
-    
     paginator = Paginator(users_list, 100) 
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -170,8 +163,6 @@ def ranking_view(request):
 
 def user_profile_view(request, username):
     target_user = get_object_or_404(User, username=username)
-    
-    # Если пользователь забанен, его профиль видит только он сам или админ
     if target_user.profile.is_disqualified and not request.user.is_staff and request.user != target_user:
         messages.error(request, "Этот пользователь дисквалифицирован.")
         return redirect('ranking_view')
@@ -196,13 +187,11 @@ def user_profile_view(request, username):
 
 @login_required
 def profile_view(request):
-    # Редирект на именной профиль текущего юзера
     return user_profile_view(request, request.user.username)
 
 @login_required
 def toggle_friend(request, username):
     target_user = get_object_or_404(User, username=username)
-    # Нельзя дружить с забаненными
     if target_user.profile.is_disqualified:
         messages.error(request, "Нельзя добавить в друзья дисквалифицированного пользователя.")
         return redirect('ranking_view')
@@ -217,7 +206,6 @@ def toggle_friend(request, username):
 
 def user_search(request):
     query = request.GET.get('q', '')
-    # Ищем только по тем, кто НЕ дисквалифицирован
     if query:
         users = User.objects.filter(
             username__icontains=query,
@@ -225,15 +213,14 @@ def user_search(request):
         ).select_related('profile')
     else:
         users = []
-        
     return render(request, 'archive/user_search.html', {'users': users, 'query': query})
 
 @login_required
 def friends_list_view(request):
-    # Прячем дисквалифицированных из списка друзей
     friends = request.user.profile.friends.filter(profile__is_disqualified=False).select_related('profile')
     return render(request, 'archive/friends_list.html', {'friends': friends})
 
+# --- НОВАЯ СИСТЕМА РЕЙТИНГА ---
 @staff_member_required
 def calculate_contest_rating(request, pk):
     contest = get_object_or_404(Contest, pk=pk)
@@ -250,37 +237,63 @@ def calculate_contest_rating(request, pk):
     
     participants = []
     for author in author_list:
-        solved = submissions.filter(author=author, is_correct=True).values('problem').distinct().count()
+        author_subs = submissions.filter(author=author)
+        solved_problems = contest.problems.filter(
+            submission__author=author,
+            submission__is_correct=True,
+            submission__submitted_at__gte=contest.start_time,
+            submission__submitted_at__lte=contest.end_time
+        ).distinct()
+        
+        solved_count = solved_problems.count()
+        penalty = 0
+        for problem in solved_problems:
+            prob_subs = author_subs.filter(problem=problem).order_by('submitted_at')
+            first_correct = prob_subs.filter(is_correct=True).first()
+            if first_correct:
+                time_passed = (first_correct.submitted_at - contest.start_time).total_seconds() // 60
+                failed_before = prob_subs.filter(submitted_at__lt=first_correct.submitted_at).count()
+                penalty += time_passed + (failed_before * 20)
+
         participants.append({
             'user': author,
             'old_rating': author.profile.rating,
-            'solved': solved,
+            'solved': solved_count,
+            'penalty': penalty,
             'change': 0
         })
 
     if not participants:
-        messages.warning(request, "Нет активных участников для начисления рейтинга.")
+        messages.warning(request, "Нет активных участников.")
         return redirect('contest_standings', pk=pk)
 
-    K = 40
+    K = 30 
     for i in range(len(participants)):
         for j in range(len(participants)):
             if i == j: continue
             p1, p2 = participants[i], participants[j]
             expected = 1 / (1 + 10 ** ((p2['old_rating'] - p1['old_rating']) / 400))
-            if p1['solved'] > p2['solved']: actual = 1
-            elif p1['solved'] < p2['solved']: actual = 0
-            else: actual = 0.5
+            
+            if p1['solved'] > p2['solved']: 
+                actual = 1
+            elif p1['solved'] < p2['solved']: 
+                actual = 0
+            else:
+                if p1['penalty'] < p2['penalty']: actual = 0.75
+                elif p1['penalty'] > p2['penalty']: actual = 0.25
+                else: actual = 0.5
+            
             p1['change'] += K * (actual - expected)
 
     for p in participants:
         user = p['user']
-        past_contests = Submission.objects.filter(author=user, submitted_at__lt=contest.start_time).values('problem__contests').distinct().count()
+        # Проверяем реальную историю рейтингов для бонуса
+        past_contests_count = RatingHistory.objects.filter(user=user).count()
         
         bonus = 0
-        if past_contests == 0: bonus = 100
-        elif past_contests == 1: bonus = 50
-        elif past_contests == 2: bonus = 30
+        if p['solved'] > 0:
+            if past_contests_count == 0: bonus = 50
+            elif past_contests_count == 1: bonus = 25
         
         profile = user.profile
         profile.rating += int(p['change'] + bonus)
@@ -292,7 +305,7 @@ def calculate_contest_rating(request, pk):
             contest=contest
         )
         
-    messages.success(request, f"Рейтинг начислен для {len(participants)} участников!")
+    messages.success(request, f"Рейтинг начислен для {len(participants)} участников (с учетом штрафа)!")
     return redirect('contest_standings', pk=pk)
 
 @staff_member_required
@@ -303,9 +316,5 @@ def manual_update_submission(request, pk, action):
     elif action == 'make_incorrect':
         submission.is_correct = False
     submission.save()
-    
     messages.success(request, f"Статус посылки #{submission.id} изменен.")
     return redirect('submission_detail', pk=pk)
-
-# В функции problem_list в контекст ничего добавлять не нужно, 
-# мы просто используем ID задачи в шаблоне для фильтрации.
