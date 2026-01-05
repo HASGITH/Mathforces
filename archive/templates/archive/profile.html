@@ -4,77 +4,92 @@
     <meta charset="UTF-8">
     <title>{{ target_user.username }}'s Profile - Mathforces</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .rating-number { font-size: 1.5rem; font-weight: bold; }
-        .rank-title { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
-        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .btn-friend { border-radius: 20px; padding: 5px 20px; transition: 0.3s; }
-        .stat-link { text-decoration: none; color: inherit; transition: 0.2s; }
-        .stat-link:hover { opacity: 0.7; }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #334155; }
+        .navbar { background-color: #0f172a !important; padding: 0.8rem 0; }
+        .card { border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .rating-number { font-size: 1.75rem; font-weight: 800; color: #1e293b; }
+        .rank-title { font-size: 1rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+        .btn-friend { border-radius: 12px; font-weight: 600; transition: 0.2s; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; color: #64748b; font-weight: 700; }
+        .table thead { background-color: #f8fafc; }
+        .table { border-radius: 12px; overflow: hidden; }
     </style>
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow">
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-5 shadow">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'problem_list' %}"><b>MATHFORCES</b></a>
-            <form class="d-flex ms-auto" action="{% url 'user_search' %}" method="GET">
-                <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Search users">
-                <button class="btn btn-outline-light btn-sm" type="submit">Search</button>
-            </form>
+            <a class="navbar-brand fw-bold" href="{% url 'problem_list' %}">MATHFORCES</a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{% url 'problem_list' %}">Archive</a>
+                    <a class="nav-link" href="{% url 'contest_list' %}">Contests</a>
+                    <a class="nav-link" href="{% url 'submission_list' %}">Submissions</a>
+                    <a class="nav-link" href="{% url 'ranking' %}">Ranking</a>
+                    <a class="nav-link active" href="{% url 'profile_view' %}">My Profile</a>
+                </div>
+                <form class="d-flex ms-3" action="{% url 'user_search' %}" method="GET">
+                    <input class="form-control form-control-sm me-2 bg-dark text-white border-secondary" type="search" name="q" placeholder="Search users">
+                    <button class="btn btn-outline-light btn-sm" type="submit">Search</button>
+                </form>
+            </div>
         </div>
     </nav>
 
     <div class="container">
-        <div class="row">
+        <div class="row g-4">
             <div class="col-md-4">
-                <div class="card p-4 text-center mb-4">
+                <div class="card p-4 text-center">
                     <div class="mb-3">
-                        <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px; font-size: 2rem;">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow" style="width: 100px; height: 100px; font-size: 2.5rem; font-weight: 800;">
                             {{ target_user.username|first|upper }}
                         </div>
                     </div>
                     
-                    <h4 class="mb-1">{{ target_user.username }}</h4>
+                    <h3 class="fw-bold mb-1">{{ target_user.username }}</h3>
                     
-                    <div class="mb-2">
+                    <div class="mb-3">
                         {% if rank %}
-                            <span class="rank-title fw-bold" style="color: {{ rank.color_code }};">{{ rank.title }}</span>
+                            <span class="rank-title" style="color: {{ rank.color_code }};">{{ rank.title }}</span>
                         {% else %}
-                            <span class="text-muted small">NEWBIE</span>
+                            <span class="text-muted fw-bold">NEWBIE</span>
                         {% endif %}
                     </div>
 
                     {% if request.user.is_authenticated and request.user != target_user %}
                         <form action="{% url 'toggle_friend' target_user.username %}" method="POST" class="mb-3">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm {% if is_friend %}btn-outline-danger{% else %}btn-primary{% endif %} btn-friend w-100">
-                                {% if is_friend %}Remove Friend{% else %}Add Friend{% endif %}
+                            <button type="submit" class="btn w-100 btn-friend {% if is_friend %}btn-outline-danger{% else %}btn-primary{% endif %}">
+                                {% if is_friend %}− Remove Friend{% else %}+ Add Friend{% endif %}
                             </button>
                         </form>
                     {% endif %}
 
-                    {% if profile.is_disqualified %}
-                        <span class="badge bg-danger mb-3">DISQUALIFIED</span>
-                    {% else %}
-                        <span class="badge bg-success mb-3">ACTIVE</span>
-                    {% endif %}
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        {% if profile.is_disqualified %}
+                            <span class="badge bg-danger rounded-pill px-3">DISQUALIFIED</span>
+                        {% else %}
+                            <span class="badge bg-success rounded-pill px-3">ACTIVE</span>
+                        {% endif %}
+                    </div>
                     
-                    <hr>
+                    <hr class="my-4">
 
-                    <div class="row text-center">
+                    <div class="row">
                         <div class="col">
                             <div class="rating-number text-primary">{{ profile.rating }}</div>
-                            <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Rating</small>
+                            <div class="stat-label">Rating</div>
                         </div>
                         <div class="col border-start border-end">
                             <div class="rating-number">{{ solved_count }}</div>
-                            <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Solved</small>
+                            <div class="stat-label">Solved</div>
                         </div>
                         <div class="col">
-                            <a href="{% url 'friends_list' %}" class="stat-link">
+                            <a href="{% url 'friends_list' %}" class="text-decoration-none">
                                 <div class="rating-number text-success">{{ target_user.profile.friends.count }}</div>
-                                <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Friends</small>
+                                <div class="stat-label">Friends</div>
                             </a>
                         </div>
                     </div>
@@ -83,40 +98,46 @@
 
             <div class="col-md-8">
                 <div class="card p-4 mb-4">
-                    <h5 class="mb-3">Rating Chart</h5>
-                    <div style="height: 300px;">
+                    <h5 class="fw-bold mb-4">Rating History</h5>
+                    <div style="height: 320px;">
                         <canvas id="ratingChart"></canvas>
                     </div>
                 </div>
 
-                <div class="card p-4">
-                    <h5 class="mb-4">Recent Submissions</h5>
+                <div class="card p-0 overflow-hidden">
+                    <div class="p-4 border-bottom bg-light">
+                        <h5 class="fw-bold mb-0">Recent Activity</h5>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
                                 <tr>
-                                    <th>Problem</th>
-                                    <th>Result</th>
-                                    <th>Date</th>
+                                    <th class="ps-4">Problem</th>
+                                    <th class="text-center">Result</th>
+                                    <th class="text-end pe-4">Date</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for sub in submissions %}
                                 <tr>
-                                    <td><a href="{% url 'problem_detail' sub.problem.id %}" class="text-decoration-none text-dark fw-medium">{{ sub.problem.title }}</a></td>
-                                    <td>
+                                    <td class="ps-4">
+                                        <a href="{% url 'problem_detail' sub.problem.id %}" class="text-decoration-none text-dark fw-bold">
+                                            {{ sub.problem.title }}
+                                        </a>
+                                    </td>
+                                    <td class="text-center">
                                         <a href="{% url 'submission_detail' sub.id %}" class="text-decoration-none">
                                             {% if sub.is_correct %}
-                                                <span class="badge bg-success">OK</span>
+                                                <span class="badge bg-success py-2 px-3">OK</span>
                                             {% else %}
-                                                <span class="badge bg-danger">WA</span>
+                                                <span class="badge bg-danger py-2 px-3">WA</span>
                                             {% endif %}
                                         </a>
                                     </td>
-                                    <td class="text-muted small">{{ sub.submitted_at|date:"M d, H:i" }}</td>
+                                    <td class="text-end pe-4 text-muted small">{{ sub.submitted_at|date:"M d, H:i" }}</td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="3" class="text-center py-4 text-muted">No submissions yet</td></tr>
+                                <tr><td colspan="3" class="text-center py-5 text-muted">No activity yet</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -127,36 +148,58 @@
     </div>
 
     <script>
-        const ratingLabels = [{% for entry in target_user.ratinghistory_set.all %}"{{ entry.contest.title|truncatechars:10 }}",{% endfor %}];
-        const ratingData = [{% for entry in target_user.ratinghistory_set.all %}{{ entry.rating }},{% endfor %}];
+        // Сбор данных для графика
+        const ratingLabels = [
+            {% for entry in target_user.ratinghistory_set.all %}
+                "{{ entry.contest.title|truncatechars:12 }}",
+            {% endfor %}
+        ];
+        const ratingData = [
+            {% for entry in target_user.ratinghistory_set.all %}
+                {{ entry.rating }},
+            {% endfor %}
+        ];
 
         const ctx = document.getElementById('ratingChart').getContext('2d');
+        
+        // Если данных нет, график будет пустым, но не упадет
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ratingLabels,
+                labels: ratingLabels.length ? ratingLabels : ["Start"],
                 datasets: [{
                     label: 'Rating',
-                    data: ratingData,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    borderWidth: 3,
-                    pointBackgroundColor: '#0d6efd',
-                    pointRadius: 4,
+                    data: ratingData.length ? ratingData : [{{ profile.rating }}],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3b82f6',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
                     fill: true,
-                    tension: 0.3
+                    tension: 0.4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: { 
-                    y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
+                    y: { 
+                        beginAtZero: false, 
+                        grid: { color: '#f1f5f9' },
+                        ticks: { font: { weight: '600' } }
+                    },
                     x: { grid: { display: false } }
                 },
                 plugins: { 
                     legend: { display: false },
-                    tooltip: { backgroundColor: '#333' }
+                    tooltip: { 
+                        padding: 12,
+                        backgroundColor: '#0f172a',
+                        titleFont: { size: 14, weight: 'bold' }
+                    }
                 }
             }
         });
