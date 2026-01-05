@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
 
-# --- АРХИВ ---
+# --- ARCHIVE ---
 def problem_list(request):
     now = timezone.now()
     if request.user.is_staff:
@@ -40,7 +40,7 @@ def problem_detail(request, pk, contest_id=None):
         has_started_contest = problem.contests.filter(start_time__lte=now).exists()
         
         if future_contests.exists() and not has_started_contest:
-            messages.error(request, "Эта задача еще не опубликована.")
+            messages.error(request, "This problem has not been published yet.")
             return redirect('problem_list')
 
     contest = None
@@ -65,13 +65,13 @@ def problem_detail(request, pk, contest_id=None):
                 solution_text=solution,
                 is_correct=is_correct
             )
-        result = "Правильно!" if is_correct else "Неверно!"
+        result = "Correct!" if is_correct else "Wrong Answer!"
         
     return render(request, 'archive/problem_detail.html', {
         'problem': problem, 'result': result, 'active_contest': active_contest, 'is_banned': is_banned
     })
 
-# --- ПОСЫЛКИ ---
+# --- SUBMISSIONS ---
 def submission_list(request):
     now = timezone.now()
     base_query = Submission.objects.filter(author__profile__is_disqualified=False)
@@ -96,14 +96,14 @@ def submission_list(request):
 def submission_detail(request, pk):
     submission = get_object_or_404(Submission, pk=pk)
     if submission.author.profile.is_disqualified and not request.user.is_staff and request.user != submission.author:
-        messages.error(request, "Эта посылка недоступна.")
+        messages.error(request, "This submission is unavailable.")
         return redirect('submission_list')
 
     active_contests = submission.problem.contests.filter(start_time__lte=timezone.now(), end_time__gte=timezone.now())
     can_view = (request.user == submission.author or request.user.is_staff or not active_contests.exists())
     return render(request, 'archive/submission_detail.html', {'submission': submission, 'can_view': can_view})
 
-# --- СОРЕВНОВАНИЯ ---
+# --- CONTESTS ---
 def contest_list(request):
     contests = Contest.objects.all().order_by('-start_time')
     return render(request, 'archive/contest_list.html', {'contests': contests, 'now': timezone.now()})
@@ -113,7 +113,7 @@ def contest_dashboard(request, pk):
     now = timezone.now()
 
     if contest.start_time > now and not request.user.is_staff:
-        messages.warning(request, f"Соревнование начнется в {contest.start_time}")
+        messages.warning(request, f"Contest starts at {contest.start_time}")
         return redirect('contest_list')
 
     problems = contest.problems.all()
@@ -148,7 +148,7 @@ def contest_standings(request, pk):
     results.sort(key=lambda x: (-x['solved'], x['penalty']))
     return render(request, 'archive/contest_standings.html', {'contest': contest, 'results': results, 'problems': problems})
 
-# --- АККАУНТЫ И РАНКИНГ ---
+# --- ACCOUNTS & RANKING ---
 class SignUpView(generic.CreateView):
     form_class = UserCreationForm
     success_url = reverse_lazy('login')
@@ -164,7 +164,7 @@ def ranking_view(request):
 def user_profile_view(request, username):
     target_user = get_object_or_404(User, username=username)
     if target_user.profile.is_disqualified and not request.user.is_staff and request.user != target_user:
-        messages.error(request, "Этот пользователь дисквалифицирован.")
+        messages.error(request, "This user has been disqualified.")
         return redirect('ranking_view')
 
     profile = target_user.profile
@@ -193,7 +193,7 @@ def profile_view(request):
 def toggle_friend(request, username):
     target_user = get_object_or_404(User, username=username)
     if target_user.profile.is_disqualified:
-        messages.error(request, "Нельзя добавить в друзья дисквалифицированного пользователя.")
+        messages.error(request, "Cannot add a disqualified user to friends.")
         return redirect('ranking_view')
         
     if target_user != request.user:
@@ -220,7 +220,7 @@ def friends_list_view(request):
     friends = request.user.profile.friends.filter(profile__is_disqualified=False).select_related('profile')
     return render(request, 'archive/friends_list.html', {'friends': friends})
 
-# --- НОВАЯ СИСТЕМА РЕЙТИНГА ---
+# --- RATING SYSTEM ---
 @staff_member_required
 def calculate_contest_rating(request, pk):
     contest = get_object_or_404(Contest, pk=pk)
@@ -264,7 +264,7 @@ def calculate_contest_rating(request, pk):
         })
 
     if not participants:
-        messages.warning(request, "Нет активных участников.")
+        messages.warning(request, "No active participants found.")
         return redirect('contest_standings', pk=pk)
 
     K = 30 
@@ -287,7 +287,6 @@ def calculate_contest_rating(request, pk):
 
     for p in participants:
         user = p['user']
-        # Проверяем реальную историю рейтингов для бонуса
         past_contests_count = RatingHistory.objects.filter(user=user).count()
         
         bonus = 0
@@ -305,7 +304,7 @@ def calculate_contest_rating(request, pk):
             contest=contest
         )
         
-    messages.success(request, f"Рейтинг начислен для {len(participants)} участников (с учетом штрафа)!")
+    messages.success(request, f"Rating calculated for {len(participants)} participants!")
     return redirect('contest_standings', pk=pk)
 
 @staff_member_required
@@ -316,5 +315,5 @@ def manual_update_submission(request, pk, action):
     elif action == 'make_incorrect':
         submission.is_correct = False
     submission.save()
-    messages.success(request, f"Статус посылки #{submission.id} изменен.")
+    messages.success(request, f"Submission #{submission.id} status updated.")
     return redirect('submission_detail', pk=pk)

@@ -1,50 +1,54 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mathforces - Посылки</title>
+    <title>Submissions - Mathforces</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-dark bg-dark mb-4 shadow">
         <div class="container">
             <a class="navbar-brand" href="{% url 'problem_list' %}">MATHFORCES</a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="{% url 'submission_list' %}">Посылки</a>
+                <a class="nav-link active" href="{% url 'submission_list' %}">All Submissions</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <h2>Последние посылки</h2>
-        <table class="table table-striped bg-white shadow-sm mt-3">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Время</th>
-                    <th>Участник</th>
-                    <th>Задача</th>
-                    <th>Вердикт</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sub in submissions %}
-                <tr>
-                    <td><a href="{% url 'submission_detail' sub.id %}">{{ sub.id }}</a></td>
-                    <td>{{ sub.submitted_at|date:"H:i:s" }}</td>
-                    <td><b>{{ sub.author.username }}</b></td>
-                    <td>{{ sub.problem.title }}</td>
-                    <td>
-                        {% if sub.is_correct %}
-                            <span class="text-success fw-bold">OK</span>
-                        {% else %}
-                            <span class="text-danger fw-bold">WA</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <h2 class="mb-4">Recent Submissions</h2>
+        <div class="card shadow-sm border-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">ID</th>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Problem</th>
+                        <th>Verdict</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white">
+                    {% for sub in submissions %}
+                    <tr>
+                        <td class="ps-3"><a href="{% url 'submission_detail' sub.id %}" class="text-decoration-none">#{{ sub.id }}</a></td>
+                        <td class="text-muted small">{{ sub.submitted_at|date:"H:i:s" }}</td>
+                        <td><a href="{% url 'user_profile' sub.author.username %}" class="text-decoration-none fw-bold text-dark">{{ sub.author.username }}</a></td>
+                        <td>{{ sub.problem.title }}</td>
+                        <td>
+                            {% if sub.is_correct %}
+                                <span class="badge bg-success-subtle text-success border border-success px-3">OK</span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3">WA</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4">No submissions yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>

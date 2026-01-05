@@ -1,56 +1,37 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>{{ problem.title }} - Mathforces</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <script>
         window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']],
-                processEscapes: true
-            },
-            options: {
-                ignoreHtmlClass: 'tex2jax_ignore',
-                processHtmlClass: 'tex2jax_process'
-            }
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+            options: { ignoreHtmlClass: 'tex2jax_ignore', processHtmlClass: 'tex2jax_process' }
         };
     </script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
-        }
-        .animate-pulse {
-            animation: pulse 1.5s infinite;
-            font-weight: 900;
-            color: #dc3545; /* Красный цвет Bootstrap */
-        }
-        .problem-text {
-            line-height: 1.6;
-            color: #212529;
-        }
-        /* Улучшение отображения формул */
-        .MathJax {
-            font-size: 1.1em !important;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        .problem-statement { font-size: 1.1rem; line-height: 1.7; color: #2d3436; }
+        .code-input { font-family: 'Courier New', monospace; background-color: #fdfdfd; }
+        .animate-pulse { animation: pulse 2s infinite; color: #dc3545; font-weight: 700; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="bg-light">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'problem_list' %}"><b>MATHFORCES</b></a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="{% url 'problem_list' %}">Архив</a>
-                <a class="nav-link" href="{% url 'contest_list' %}">Соревнования</a>
-                <a class="nav-link" href="{% url 'submission_list' %}">Посылки</a>
+            <a class="navbar-brand" href="{% url 'problem_list' %}">MATHFORCES</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'problem_list' %}">Archive</a>
+                <a class="nav-link" href="{% url 'contest_list' %}">Contests</a>
+                <a class="nav-link" href="{% url 'submission_list' %}">Submissions</a>
             </div>
         </div>
     </nav>
@@ -60,73 +41,66 @@
             <div class="col-md-9">
                 
                 {% if active_contest %}
-                <div class="alert alert-warning shadow-sm d-flex justify-content-between align-items-center mb-4 border-0">
-                    <span><strong>Внимание!</strong> Эта задача сейчас в контесте: <b>{{ active_contest.title }}</b></span>
-                    <a href="{% url 'contest_dashboard' active_contest.id %}" class="btn btn-sm btn-dark">Перейти к списку</a>
+                <div class="alert alert-warning shadow-sm d-flex justify-content-between align-items-center mb-4 border-0 rounded-3">
+                    <span><strong>Active Contest!</strong> This problem is part of: <b>{{ active_contest.title }}</b></span>
+                    <a href="{% url 'contest_dashboard' active_contest.id %}" class="btn btn-sm btn-dark">Go to Dashboard</a>
                 </div>
                 {% endif %}
 
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h2 class="mb-0 text-primary">{{ problem.title }}</h2>
-                        <span class="badge {{ problem.difficulty_level|default:'bg-secondary' }}">
-                            Difficulty: {{ problem.difficulty }}
+                <div class="card shadow-sm border-0 mb-4 rounded-3">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0 fw-bold text-dark">{{ problem.title }}</h2>
+                        <span class="badge {{ problem.difficulty_level|default:'bg-secondary' }} px-3 py-2">
+                            Rating: {{ problem.difficulty }}
                         </span>
                     </div>
                     <div class="card-body bg-white p-4">
-                        <div class="problem-text fs-5 mb-4 tex2jax_process">
+                        <div class="problem-statement mb-5 tex2jax_process">
                             {{ problem.description|linebreaks }}
                         </div>
 
                         <hr class="my-4">
 
                         {% if result %}
-                            <div class="alert {% if result == 'Правильно!' %}alert-success{% else %}alert-danger{% endif %} fw-bold shadow-sm">
-                                {{ result }}
+                            <div class="alert {% if 'Правильно' in result or 'Right' in result %}alert-success{% else %}alert-danger{% endif %} fw-bold shadow-sm">
+                                {% if 'Правильно' in result %}Correct Answer!{% else %}Wrong Answer!{% endif %}
                             </div>
                         {% endif %}
 
                         {% if is_banned %}
-                            <div class="alert alert-danger shadow-sm py-4 text-center mt-4">
-                                <h4 class="alert-heading">🚫 Доступ ограничен</h4>
-                                <p class="mb-0">Вы были дисквалифицированы. Отправка решений невозможна.</p>
-                                {% if user.profile.reason %}
-                                    <hr>
-                                    <p class="small mb-0 text-dark">Причина: <i>{{ user.profile.reason }}</i></p>
-                                {% endif %}
+                            <div class="alert alert-danger shadow-sm text-center">
+                                <h4>🚫 Disqualified</h4>
+                                <p>You are banned from submitting solutions.</p>
+                                <small>Reason: {{ user.profile.reason }}</small>
                             </div>
                         {% else %}
                             <form method="POST" class="mt-4">
                                 {% csrf_token %}
                                 <div class="mb-4">
-                                    <label class="form-label fw-bold">Ваш ответ:</label>
-                                    <input type="text" name="answer" class="form-control form-control-lg border-primary" placeholder="Введите краткий ответ" required autocomplete="off">
+                                    <label class="form-label fw-bold text-secondary">Answer</label>
+                                    <input type="text" name="answer" class="form-control form-control-lg border-primary code-input" placeholder="Enter your numeric or text answer" required autocomplete="off">
                                 </div>
                                 
                                 <div class="mb-4">
-                                    <label class="form-label fw-bold">
-                                        Решение:
+                                    <label class="form-label fw-bold text-secondary">
+                                        Solution / Logic
                                         {% if active_contest %}
-                                            <span class="animate-pulse ms-2">(ОБЯЗАТЕЛЬНО!)</span>
+                                            <span class="animate-pulse ms-2 small text-uppercase">(Required during contest)</span>
                                         {% else %}
-                                            <span class="text-muted fw-normal small">(необязательно)</span>
+                                            <span class="text-muted fw-normal small">(Optional)</span>
                                         {% endif %}
                                     </label>
-                                    <textarea name="solution" class="form-control" rows="4" 
-                                              placeholder="Опишите ход ваших мыслей..." 
+                                    <textarea name="solution" class="form-control code-input" rows="5" 
+                                              placeholder="Briefly explain your approach..." 
                                               {% if active_contest %}required{% endif %}></textarea>
-                                    {% if active_contest %}
-                                        <div class="form-text text-danger mt-1">Во время соревнований поле решения обязательно для заполнения.</div>
-                                    {% endif %}
                                 </div>
 
-                                <div class="d-grid gap-2 d-md-flex">
-                                    <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">Отправить</button>
-                                    
+                                <div class="d-flex gap-3">
+                                    <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm fw-bold">Submit</button>
                                     {% if active_contest %}
-                                        <a href="{% url 'contest_dashboard' active_contest.id %}" class="btn btn-outline-warning btn-lg">Назад в контест</a>
+                                        <a href="{% url 'contest_dashboard' active_contest.id %}" class="btn btn-outline-dark btn-lg">Back to Contest</a>
                                     {% else %}
-                                        <a href="{% url 'problem_list' %}" class="btn btn-outline-secondary btn-lg">В архив</a>
+                                        <a href="{% url 'problem_list' %}" class="btn btn-outline-secondary btn-lg">Back to Archive</a>
                                     {% endif %}
                                 </div>
                             </form>
@@ -136,7 +110,7 @@
 
                 {% if not user.is_authenticated %}
                 <div class="alert alert-info border-0 shadow-sm text-center">
-                    Чтобы сохранить результат, пожалуйста, <a href="{% url 'login' %}" class="fw-bold text-decoration-none">войдите в систему</a>.
+                    Please <a href="{% url 'login' %}" class="fw-bold text-decoration-none">Login</a> to save your progress.
                 </div>
                 {% endif %}
 
@@ -144,8 +118,8 @@
         </div>
     </div>
     
-    <footer class="py-4 text-center text-muted">
-        <small>&copy; 2026 Mathforces Engine</small>
+    <footer class="py-5 text-center text-muted small mt-5">
+        &copy; 2026 Mathforces Engine. Built for competitive minds.
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

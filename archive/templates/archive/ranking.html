@@ -1,51 +1,56 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Рейтинг участников - Mathforces</title>
+    <title>Rankings - Mathforces</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .rank-top { background-color: #f8f9fa; font-weight: bold; }
-        .user-link { text-decoration: none; font-weight: 600; }
-        .pagination .page-link { color: #212529; }
-        .pagination .active .page-link { background-color: #212529; border-color: #212529; color: white; }
+        .rank-top { background-color: #fcf8e3 !important; font-weight: bold; }
+        .user-link { text-decoration: none; font-weight: 600; color: #0056b3; }
+        .user-link:hover { text-decoration: underline; }
+        .pagination .page-link { color: #333; }
+        .pagination .active .page-link { background-color: #333; border-color: #333; color: white; }
     </style>
 </head>
 <body class="bg-light">
-    <div class="container mt-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th class="ps-4">#</th>
-                            <th>Участник</th>
-                            <th>Рейтинг</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in page_obj %}
-                        <tr {% if forloop.counter <= 3 and page_obj.number == 1 %}class="rank-top"{% endif %}>
-                            <td class="ps-4 text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                            <td>
-                                <a href="{% url 'user_profile' user.username %}" class="user-link">
-                                    {{ user.username }}
-                                </a>
-                            </td>
-                            <td><span class="badge bg-primary px-3">{{ user.profile.rating }}</span></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><span class="text-primary">#</span> Global Rankings</h2>
+            <a href="{% url 'problem_list' %}" class="btn btn-outline-secondary btn-sm">Back to Archive</a>
+        </div>
+
+        <div class="card shadow-sm border-0 overflow-hidden">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4" style="width: 80px;">Rank</th>
+                        <th>User</th>
+                        <th class="text-end pe-4">Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in page_obj %}
+                    <tr {% if forloop.counter <= 3 and page_obj.number == 1 %}class="rank-top"{% endif %}>
+                        <td class="ps-4 text-muted">#{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                        <td>
+                            <a href="{% url 'user_profile' user.username %}" class="user-link">
+                                {{ user.username }}
+                            </a>
+                        </td>
+                        <td class="text-end pe-4">
+                            <span class="badge rounded-pill bg-primary px-3">{{ user.profile.rating }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
 
         {% if page_obj.paginator.num_pages > 1 %}
         <nav class="mt-4">
-            <ul class="pagination justify-content-center shadow-sm">
+            <ul class="pagination justify-content-center">
                 {% if page_obj.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page=1">«</a></li>
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
                 {% endif %}
 
                 {% for num in page_obj.paginator.page_range %}
@@ -57,8 +62,7 @@
                 {% endfor %}
 
                 {% if page_obj.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">»</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">&raquo;</a></li>
                 {% endif %}
             </ul>
         </nav>

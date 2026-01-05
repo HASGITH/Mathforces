@@ -1,25 +1,18 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>{{ contest.title }} - Mathforces</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .problem-letter {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f8f9fa;
-            border-radius: 50%;
-            font-weight: bold;
-            margin-right: 15px;
+            width: 42px; height: 42px;
+            display: flex; align-items: center; justify-content: center;
+            background-color: #f8f9fa; border-radius: 8px;
+            font-weight: bold; margin-right: 15px; border: 1px solid #dee2e6;
         }
-        /* Стиль для подсвечивания решенных задач */
-        .solved-item {
-            border-left: 5px solid #198754 !important;
-        }
+        .solved-item { border-left: 5px solid #198754 !important; background-color: #f8fff9; }
+        .list-group-item:hover { background-color: #f1f3f5; }
     </style>
 </head>
 <body class="bg-light">
@@ -27,9 +20,9 @@
         <div class="container">
             <a class="navbar-brand" href="{% url 'problem_list' %}"><b>MATHFORCES</b></a>
             <div class="navbar-nav">
-                <a class="nav-link" href="{% url 'problem_list' %}">Архив</a>
-                <a class="nav-link active" href="{% url 'contest_list' %}">Соревнования</a>
-                <a class="nav-link" href="{% url 'submission_list' %}">Посылки</a>
+                <a class="nav-link" href="{% url 'problem_list' %}">Archive</a>
+                <a class="nav-link active" href="{% url 'contest_list' %}">Contests</a>
+                <a class="nav-link" href="{% url 'submission_list' %}">Submissions</a>
             </div>
         </div>
     </nav>
@@ -39,23 +32,23 @@
             <div class="col-md-9">
                 <div class="card p-4 shadow-sm mb-4 border-0">
                     <h1 class="display-6">{{ contest.title }}</h1>
-                    <p class="text-muted">{{ contest.description|default:"Описание отсутствует" }}</p>
+                    <p class="text-muted">{{ contest.description|default:"No description available." }}</p>
                     <div class="d-flex gap-2">
-                        <span class="badge bg-dark">Начало: {{ contest.start_time|date:"H:i" }}</span>
-                        <span class="badge bg-dark">Конец: {{ contest.end_time|date:"H:i" }}</span>
+                        <span class="badge bg-secondary">Start: {{ contest.start_time|date:"H:i" }}</span>
+                        <span class="badge bg-secondary">End: {{ contest.end_time|date:"H:i" }}</span>
                     </div>
                 </div>
 
                 <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white">
-                        <h4 class="mb-0 py-2">Задачи</h4>
+                    <div class="card-header bg-white border-bottom-0">
+                        <h4 class="mb-0 py-2">Problem Set</h4>
                     </div>
                     <div class="list-group list-group-flush">
                         {% for problem in problems %}
                         <a href="{% url 'contest_problem_detail' contest.id problem.id %}" 
                            class="list-group-item list-group-item-action d-flex align-items-center py-3 {% if problem.id in solved_ids %}solved-item{% endif %}">
                             
-                            <div class="problem-letter border {% if problem.id in solved_ids %}bg-success text-white border-success{% endif %}">
+                            <div class="problem-letter {% if problem.id in solved_ids %}bg-success text-white border-success{% endif %}">
                                 {{ forloop.counter }}
                             </div>
                             
@@ -63,14 +56,14 @@
                                 <h6 class="mb-0">
                                     {{ problem.title }}
                                     {% if problem.id in solved_ids %}
-                                        <span class="badge bg-success ms-2" style="font-size: 0.7em;">OK</span>
+                                        <span class="badge bg-success ms-2">Solved</span>
                                     {% endif %}
                                 </h6>
-                                <small class="text-muted">Сложность: {{ problem.difficulty }}</small>
+                                <small class="text-muted">Difficulty: {{ problem.difficulty }}</small>
                             </div>
                             
-                            <div class="text-end">
-                                <i class="text-primary fw-bold">{% if problem.id in solved_ids %}Просмотр{% else %}Решить{% endif %} &rarr;</i>
+                            <div class="text-end text-primary fw-bold">
+                                {% if problem.id in solved_ids %}View{% else %}Solve{% endif %} &rarr;
                             </div>
                         </a>
                         {% endfor %}
@@ -80,33 +73,19 @@
 
             <div class="col-md-3">
                 <div class="card shadow-sm border-0 mb-3 text-center p-3">
-                    <div class="small text-muted mb-2 text-uppercase fw-bold">До завершения:</div>
+                    <div class="small text-muted mb-1 text-uppercase fw-bold">Time remaining:</div>
                     <div class="h4 text-primary mb-3">
                         {% if contest.is_active %}
                             {{ contest.end_time|timeuntil }}
                         {% else %}
-                            <span class="text-danger">Завершено</span>
+                            <span class="text-danger">Finished</span>
                         {% endif %}
                     </div>
-                    <a href="{% url 'contest_standings' contest.id %}" class="btn btn-warning w-100 mb-2 fw-bold">
-                        🏆 Результаты
-                    </a>
-                    <a href="{% url 'contest_list' %}" class="btn btn-outline-secondary w-100">
-                        &larr; Все контесты
-                    </a>
+                    <a href="{% url 'contest_standings' contest.id %}" class="btn btn-warning w-100 mb-2 fw-bold">🏆 Standings</a>
+                    <a href="{% url 'contest_list' %}" class="btn btn-outline-secondary btn-sm w-100">Back to Contests</a>
                 </div>
-
-                {% if user.is_authenticated %}
-                <div class="card shadow-sm border-0 p-3">
-                    <h6>Участник: <b>{{ user.username }}</b></h6>
-                    <hr class="my-2">
-                    <p class="small mb-0">Решено в этом контесте: <b>{{ solved_ids|length }}</b></p>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
