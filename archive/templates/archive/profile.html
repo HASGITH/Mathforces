@@ -9,10 +9,10 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #334155; }
         .navbar { background-color: #0f172a !important; padding: 0.8rem 0; }
-        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .rating-number { font-size: 1.5rem; font-weight: bold; }
         .rank-title { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
-        .btn-friend { border-radius: 20px; padding: 5px 20px; transition: 0.3s; font-weight: 600; }
+        .btn-friend { border-radius: 20px; padding: 5px 20px; transition: 0.3s; }
         .stat-link { text-decoration: none; color: inherit; transition: 0.2s; }
         .stat-link:hover { opacity: 0.7; }
     </style>
@@ -43,18 +43,18 @@
             <div class="col-md-4">
                 <div class="card p-4 text-center mb-4">
                     <div class="mb-3">
-                        <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px; font-size: 2rem; font-weight: 700;">
+                        <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px; font-size: 2rem;">
                             {{ target_user.username|first|upper }}
                         </div>
                     </div>
                     
-                    <h4 class="mb-1 fw-bold">{{ target_user.username }}</h4>
+                    <h4 class="mb-1">{{ target_user.username }}</h4>
                     
                     <div class="mb-2">
                         {% if rank %}
                             <span class="rank-title fw-bold" style="color: {{ rank.color_code }};">{{ rank.title }}</span>
                         {% else %}
-                            <span class="text-muted small fw-bold">NEWBIE</span>
+                            <span class="text-muted small">NEWBIE</span>
                         {% endif %}
                     </div>
 
@@ -67,29 +67,27 @@
                         </form>
                     {% endif %}
 
-                    <div class="mb-3">
-                        {% if profile.is_disqualified %}
-                            <span class="badge bg-danger">DISQUALIFIED</span>
-                        {% else %}
-                            <span class="badge bg-success">ACTIVE</span>
-                        {% endif %}
-                    </div>
+                    {% if profile.is_disqualified %}
+                        <span class="badge bg-danger mb-3">DISQUALIFIED</span>
+                    {% else %}
+                        <span class="badge bg-success mb-3">ACTIVE</span>
+                    {% endif %}
                     
                     <hr>
 
                     <div class="row text-center">
                         <div class="col">
                             <div class="rating-number text-primary">{{ profile.rating }}</div>
-                            <small class="text-muted text-uppercase" style="font-size: 0.65rem; font-weight: 700;">Rating</small>
+                            <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Rating</small>
                         </div>
                         <div class="col border-start border-end">
                             <div class="rating-number">{{ solved_count }}</div>
-                            <small class="text-muted text-uppercase" style="font-size: 0.65rem; font-weight: 700;">Solved</small>
+                            <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Solved</small>
                         </div>
                         <div class="col">
                             <a href="{% url 'friends_list' %}" class="stat-link">
                                 <div class="rating-number text-success">{{ target_user.profile.friends.count }}</div>
-                                <small class="text-muted text-uppercase" style="font-size: 0.65rem; font-weight: 700;">Friends</small>
+                                <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Friends</small>
                             </a>
                         </div>
                     </div>
@@ -98,28 +96,28 @@
 
             <div class="col-md-8">
                 <div class="card p-4 mb-4">
-                    <h5 class="fw-bold mb-3">Rating History</h5>
+                    <h5 class="mb-3 fw-bold">Rating History</h5>
                     <div style="height: 300px;">
                         <canvas id="ratingChart"></canvas>
                     </div>
                 </div>
 
                 <div class="card p-4">
-                    <h5 class="fw-bold mb-4">Recent Submissions</h5>
+                    <h5 class="mb-4 fw-bold">Recent Submissions</h5>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th>Problem</th>
-                                    <th class="text-center">Result</th>
-                                    <th class="text-end">Date</th>
+                                    <th>Result</th>
+                                    <th>Date</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for sub in submissions %}
                                 <tr>
                                     <td><a href="{% url 'problem_detail' sub.problem.id %}" class="text-decoration-none text-dark fw-medium">{{ sub.problem.title }}</a></td>
-                                    <td class="text-center">
+                                    <td>
                                         <a href="{% url 'submission_detail' sub.id %}" class="text-decoration-none">
                                             {% if sub.is_correct %}
                                                 <span class="badge bg-success">OK</span>
@@ -128,7 +126,7 @@
                                             {% endif %}
                                         </a>
                                     </td>
-                                    <td class="text-muted small text-end">{{ sub.submitted_at|date:"M d, H:i" }}</td>
+                                    <td class="text-muted small">{{ sub.submitted_at|date:"M d, H:i" }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr><td colspan="3" class="text-center py-4 text-muted">No submissions yet</td></tr>
@@ -142,27 +140,33 @@
     </div>
 
     <script>
-        // ДАННЫЕ СТРОГО ИЗ RATING HISTORY
+        // Собираем данные из истории рейтинга (RatingHistory)
+        // Мы используем target_user.ratinghistory_set.all для доступа к связанным записям
         const ratingLabels = [
-            {% for entry in target_user.ratinghistory_set.all %}
+            {% for entry in target_user.ratinghistory_set.all|dictsort:"id" %}
                 "{{ entry.contest.title|truncatechars:10 }}",
             {% endfor %}
         ];
         
         const ratingData = [
-            {% for entry in target_user.ratinghistory_set.all %}
+            {% for entry in target_user.ratinghistory_set.all|dictsort:"id" %}
                 {{ entry.rating }},
             {% endfor %}
         ];
+
+        // Отладка: проверь это в консоли браузера (F12), если график не рисуется
+        console.log("Labels from History:", ratingLabels);
+        console.log("Data from History:", ratingData);
 
         const ctx = document.getElementById('ratingChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ratingLabels.length ? ratingLabels : ["Start"],
+                labels: ratingLabels.length > 0 ? ratingLabels : ["Start"],
                 datasets: [{
-                    label: 'Rating Evolution',
-                    data: ratingData.length ? ratingData : [{{ profile.rating }}],
+                    label: 'Rating',
+                    // Если история пуста, берем текущий рейтинг как единственную точку
+                    data: ratingData.length > 0 ? ratingData : [{{ profile.rating }}],
                     borderColor: '#0d6efd',
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
                     borderWidth: 3,
@@ -180,13 +184,12 @@
                     y: { 
                         beginAtZero: false, 
                         grid: { color: '#f0f0f0' },
-                        ticks: { font: { weight: 'bold' } }
+                        ticks: { stepSize: 100 }
                     },
                     x: { grid: { display: false } }
                 },
                 plugins: { 
-                    legend: { display: false },
-                    tooltip: { backgroundColor: '#0f172a' }
+                    legend: { display: false }
                 }
             }
         });
