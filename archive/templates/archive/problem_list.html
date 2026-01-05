@@ -8,72 +8,82 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #334155; }
         
-        /* Navbar Styling */
-        .navbar { background-color: #0f172a !important; padding: 1rem 0; }
+        /* Navbar */
+        .navbar { background-color: #0f172a !important; padding: 0.8rem 0; }
         .navbar-brand { font-weight: 800; letter-spacing: 1px; }
 
-        /* Header section */
-        .archive-header { margin-bottom: 2rem; }
-        .archive-header h2 { font-weight: 800; color: #1e293b; letter-spacing: -0.025em; }
-
-        /* Problem Card Design */
+        /* Problem Card */
         .problem-card {
             background: white;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            margin-bottom: 12px;
+            transition: all 0.25s ease;
+            margin-bottom: 10px;
             text-decoration: none !important;
             color: inherit !important;
             display: block;
-            overflow: hidden;
         }
 
-        /* Hover Effects */
         .problem-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1), 0 8px 8px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             border-color: #3b82f6;
-            background-color: #fff;
         }
 
         .problem-row {
             display: grid;
-            grid-template-columns: 60px 1fr auto auto;
+            /* Сетка: ID, Название, Ссылка на решения, Рейтинг */
+            grid-template-columns: 50px 1fr 140px 80px;
             align-items: center;
-            padding: 16px 24px;
+            padding: 14px 20px;
         }
 
-        .prob-id { font-weight: 600; color: #94a3b8; font-size: 0.9rem; }
-        .prob-title { font-weight: 600; font-size: 1.1rem; color: #1e293b; }
+        .prob-id { color: #94a3b8; font-weight: 600; }
+        .prob-title { font-weight: 600; font-size: 1.05rem; color: #1e293b; }
         
-        /* Solved Badge */
         .solved-check {
             color: #10b981;
             background: #ecfdf5;
             padding: 2px 8px;
             border-radius: 6px;
-            font-size: 0.8rem;
-            margin-left: 10px;
+            font-size: 0.75rem;
+            margin-left: 8px;
             font-weight: 700;
         }
 
-        /* Rounded Squares for Difficulty */
+        /* Кнопка "Решения" */
+        .solutions-link {
+            font-size: 0.85rem;
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            text-align: center;
+            z-index: 10; /* Чтобы ссылка была кликабельна поверх карточки */
+            position: relative;
+        }
+
+        .solutions-link:hover {
+            background: #eef2ff;
+            color: #4338ca;
+        }
+
         .difficulty-box {
-            width: 52px;
-            height: 34px;
+            width: 50px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 700;
             font-size: 0.85rem;
             color: white;
-            margin-left: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            justify-self: end;
         }
 
-        /* Difficulty Color Logic */
+        /* Цвета сложности */
         .diff-baby { background-color: #0ea5e9; }
         .diff-easy { background-color: #10b981; }
         .diff-normal { background-color: #6366f1; }
@@ -85,35 +95,42 @@
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark mb-5 shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4 shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{% url 'problem_list' %}">MATHFORCES</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link active" href="{% url 'problem_list' %}">Archive</a>
-                <a class="nav-link" href="{% url 'ranking' %}">Ranking</a>
-                <a class="nav-link" href="{% url 'profile_view' %}">My Profile</a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link active" href="{% url 'problem_list' %}">Archive</a>
+                    <a class="nav-link" href="{% url 'contest_list' %}">Contests</a>
+                    <a class="nav-link" href="{% url 'submission_list' %}">Submissions</a>
+                    <a class="nav-link" href="{% url 'ranking' %}">Ranking</a>
+                    <a class="nav-link" href="{% url 'profile_view' %}">My Profile</a>
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <div class="archive-header text-center text-md-start">
-            <h2>Problem Archive</h2>
-            <p class="text-muted">Solve challenges to improve your rating and skills.</p>
+        <div class="mb-4">
+            <h2 class="fw-bold">Problem Archive</h2>
+            <p class="text-muted small">Solve problems and check how others did it.</p>
         </div>
 
-        <div class="problem-list-container">
-            <div class="px-4 py-2 mb-2 d-none d-md-grid text-muted fw-bold small" style="grid-template-columns: 60px 1fr auto auto;">
+        <div class="problem-list">
+            <div class="px-3 py-2 mb-1 d-none d-md-grid text-muted fw-bold small text-uppercase" style="grid-template-columns: 50px 1fr 140px 80px;">
                 <div>#</div>
-                <div>TITLE</div>
-                <div style="width: 100px; text-align: center;">STATUS</div>
-                <div style="width: 72px; text-align: center;">RATING</div>
+                <div>Title</div>
+                <div class="text-center">Solutions</div>
+                <div class="text-end">Rating</div>
             </div>
 
             {% for problem in problems %}
-            <a href="{% url 'problem_detail' problem.id %}" class="problem-card">
+            <div class="problem-card" style="position: relative;">
+                <a href="{% url 'problem_detail' problem.id %}" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index:1;"></a>
+                
                 <div class="problem-row">
                     <div class="prob-id">{{ forloop.counter }}</div>
+                    
                     <div class="prob-title">
                         {{ problem.title }}
                         {% if problem.id in solved_ids %}
@@ -121,8 +138,11 @@
                         {% endif %}
                     </div>
                     
-                    <div class="text-muted small d-none d-md-block" style="width: 100px; text-align: center;">
-                        </div>
+                    <div class="text-center">
+                        <a href="{% url 'submission_list' %}?problem_id={{ problem.id }}&status=correct" class="solutions-link">
+                            View Solutions
+                        </a>
+                    </div>
 
                     <div class="difficulty-box 
                         {% if problem.difficulty < 20 %}diff-baby
@@ -134,17 +154,13 @@
                         {{ problem.difficulty }}
                     </div>
                 </div>
-            </a>
-            {% empty %}
-            <div class="text-center py-5 bg-white rounded-4 border shadow-sm">
-                <p class="text-muted mb-0">The archive is currently empty. Check back later!</p>
             </div>
             {% endfor %}
         </div>
     </div>
 
     <footer class="py-5 text-center text-muted small mt-5">
-        &copy; 2026 Mathforces Engine. Built for competitive minds.
+        &copy; 2026 Mathforces Engine.
     </footer>
 
 </body>
