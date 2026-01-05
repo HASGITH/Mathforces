@@ -8,11 +8,15 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #334155; }
         
-        /* Заголовок архива */
+        /* Navbar Styling */
+        .navbar { background-color: #0f172a !important; padding: 1rem 0; }
+        .navbar-brand { font-weight: 800; letter-spacing: 1px; }
+
+        /* Header section */
         .archive-header { margin-bottom: 2rem; }
         .archive-header h2 { font-weight: 800; color: #1e293b; letter-spacing: -0.025em; }
 
-        /* Контейнер списка задач */
+        /* Problem Card Design */
         .problem-card {
             background: white;
             border-radius: 12px;
@@ -25,7 +29,7 @@
             overflow: hidden;
         }
 
-        /* Эффект наведения */
+        /* Hover Effects */
         .problem-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1), 0 8px 8px -5px rgba(0, 0, 0, 0.04);
@@ -43,7 +47,7 @@
         .prob-id { font-weight: 600; color: #94a3b8; font-size: 0.9rem; }
         .prob-title { font-weight: 600; font-size: 1.1rem; color: #1e293b; }
         
-        /* Тег решенной задачи */
+        /* Solved Badge */
         .solved-check {
             color: #10b981;
             background: #ecfdf5;
@@ -54,14 +58,14 @@
             font-weight: 700;
         }
 
-        /* Сложность: Округленные квадраты */
+        /* Rounded Squares for Difficulty */
         .difficulty-box {
-            width: 48px;
-            height: 32px;
+            width: 52px;
+            height: 34px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px; /* Тот самый скругленный квадрат */
+            border-radius: 8px;
             font-weight: 700;
             font-size: 0.85rem;
             color: white;
@@ -69,17 +73,14 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* Цвета сложности */
+        /* Difficulty Color Logic */
         .diff-baby { background-color: #0ea5e9; }
         .diff-easy { background-color: #10b981; }
         .diff-normal { background-color: #6366f1; }
         .diff-hard { background-color: #f59e0b; }
         .diff-legendary { background-color: #ef4444; }
-        .diff-x { background-color: #1e293b; text-shadow: 0 0 8px #ef4444; }
+        .diff-x { background-color: #1e293b; border: 1px solid #ef4444; }
 
-        /* Навигация */
-        .navbar { background-color: #0f172a !important; padding: 1rem 0; }
-        .navbar-brand { font-weight: 800; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -90,15 +91,15 @@
             <div class="navbar-nav ms-auto">
                 <a class="nav-link active" href="{% url 'problem_list' %}">Archive</a>
                 <a class="nav-link" href="{% url 'ranking' %}">Ranking</a>
-                <a class="nav-link" href="{% url 'profile' %}">My Profile</a>
+                <a class="nav-link" href="{% url 'profile_view' %}">My Profile</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <div class="archive-header">
+        <div class="archive-header text-center text-md-start">
             <h2>Problem Archive</h2>
-            <p class="text-muted">Master your skills by solving mathematical challenges.</p>
+            <p class="text-muted">Solve challenges to improve your rating and skills.</p>
         </div>
 
         <div class="problem-list-container">
@@ -106,7 +107,7 @@
                 <div>#</div>
                 <div>TITLE</div>
                 <div style="width: 100px; text-align: center;">STATUS</div>
-                <div style="width: 68px; text-align: center;">DIFF</div>
+                <div style="width: 72px; text-align: center;">RATING</div>
             </div>
 
             {% for problem in problems %}
@@ -120,7 +121,7 @@
                         {% endif %}
                     </div>
                     
-                    <div class="text-muted small d-none d-md-block">
+                    <div class="text-muted small d-none d-md-block" style="width: 100px; text-align: center;">
                         </div>
 
                     <div class="difficulty-box 
@@ -135,8 +136,8 @@
                 </div>
             </a>
             {% empty %}
-            <div class="text-center py-5 bg-white rounded-3 border">
-                <p class="text-muted">No problems found in the archive.</p>
+            <div class="text-center py-5 bg-white rounded-4 border shadow-sm">
+                <p class="text-muted mb-0">The archive is currently empty. Check back later!</p>
             </div>
             {% endfor %}
         </div>
