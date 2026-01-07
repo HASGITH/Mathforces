@@ -25,6 +25,12 @@ class Problem(models.Model):
         default='bg-primary'
     )
 
+    def save(self, *args, **kwargs):
+        # Автоматически убираем лишние пробелы при сохранении ответа в админке
+        if self.correct_answer:
+            self.correct_answer = self.correct_answer.strip()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.title
 

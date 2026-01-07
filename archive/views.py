@@ -48,14 +48,16 @@ def problem_detail(request, pk, contest_id=None):
         contest = get_object_or_404(Contest, pk=contest_id)
     
     active_contest = contest or problem.contests.filter(start_time__lte=now, end_time__gte=now).first()
-    
     is_banned = getattr(request.user.profile, 'is_disqualified', False) if request.user.is_authenticated else False
 
     result = None
     if request.method == 'POST' and not is_banned:
         user_answer = request.POST.get('answer', '').strip()
         solution = request.POST.get('solution', '')
-        is_correct = (user_answer == problem.correct_answer.strip())
+        
+        # Надежное сравнение строк
+        correct_val = str(problem.correct_answer).strip().lower()
+        is_correct = (user_answer.lower() == correct_val)
         
         if request.user.is_authenticated:
             Submission.objects.create(
@@ -65,10 +67,14 @@ def problem_detail(request, pk, contest_id=None):
                 solution_text=solution,
                 is_correct=is_correct
             )
-        result = "Correct!" if is_correct else "Wrong Answer!"
+        
+        result = "correct" if is_correct else "wrong"
         
     return render(request, 'archive/problem_detail.html', {
-        'problem': problem, 'result': result, 'active_contest': active_contest, 'is_banned': is_banned
+        'problem': problem, 
+        'result': result, 
+        'active_contest': active_contest, 
+        'is_banned': is_banned
     })
 
 # --- SUBMISSIONS ---
@@ -176,7 +182,6 @@ def user_profile_view(request, username):
     current_rank = Rank.objects.filter(min_rating__lte=profile.rating).order_by('-min_rating').first()
     submissions = Submission.objects.filter(author=target_user).order_by('-submitted_at')[:15]
     
-    # ИСПРАВЛЕНИЕ: Явно достаем историю рейтинга используя правильный related_name
     rating_history = target_user.rating_history.all().order_by('date')
     
     return render(request, 'archive/profile.html', {
@@ -186,7 +191,7 @@ def user_profile_view(request, username):
         'submissions': submissions,
         'rank': current_rank,
         'is_friend': is_friend,
-        'rating_history': rating_history, # Передаем историю в шаблон
+        'rating_history': rating_history,
     })
 
 @login_required
@@ -291,7 +296,6 @@ def calculate_contest_rating(request, pk):
 
     for p in participants:
         user = p['user']
-        # ИСПРАВЛЕНИЕ: здесь тоже используем правильный related_name
         past_contests_count = user.rating_history.count()
         
         bonus = 0

@@ -62,8 +62,12 @@
                         <hr class="my-4">
 
                         {% if result %}
-                            <div class="alert {% if 'Правильно' in result or 'Right' in result %}alert-success{% else %}alert-danger{% endif %} fw-bold shadow-sm">
-                                {% if 'Правильно' in result %}Correct Answer!{% else %}Wrong Answer!{% endif %}
+                            <div class="alert {% if result == 'correct' %}alert-success{% else %}alert-danger{% endif %} fw-bold shadow-sm">
+                                {% if result == 'correct' %}
+                                    Correct Answer!
+                                {% else %}
+                                    Wrong Answer!
+                                {% endif %}
                             </div>
                         {% endif %}
 
