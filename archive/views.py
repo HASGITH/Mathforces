@@ -176,6 +176,9 @@ def user_profile_view(request, username):
     current_rank = Rank.objects.filter(min_rating__lte=profile.rating).order_by('-min_rating').first()
     submissions = Submission.objects.filter(author=target_user).order_by('-submitted_at')[:15]
     
+    # ИСПРАВЛЕНИЕ: Явно достаем историю рейтинга используя правильный related_name
+    rating_history = target_user.rating_history.all().order_by('date')
+    
     return render(request, 'archive/profile.html', {
         'target_user': target_user,
         'profile': profile,
@@ -183,6 +186,7 @@ def user_profile_view(request, username):
         'submissions': submissions,
         'rank': current_rank,
         'is_friend': is_friend,
+        'rating_history': rating_history, # Передаем историю в шаблон
     })
 
 @login_required
@@ -287,7 +291,8 @@ def calculate_contest_rating(request, pk):
 
     for p in participants:
         user = p['user']
-        past_contests_count = RatingHistory.objects.filter(user=user).count()
+        # ИСПРАВЛЕНИЕ: здесь тоже используем правильный related_name
+        past_contests_count = user.rating_history.count()
         
         bonus = 0
         if p['solved'] > 0:

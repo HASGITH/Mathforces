@@ -140,21 +140,20 @@
     </div>
 
     <script>
-        // Собираем данные из истории рейтинга (RatingHistory)
-        // Мы используем target_user.ratinghistory_set.all для доступа к связанным записям
+        // Используем данные, переданные из view (rating_history)
         const ratingLabels = [
-            {% for entry in target_user.ratinghistory_set.all|dictsort:"id" %}
-                "{{ entry.contest.title|truncatechars:10 }}",
+            {% for entry in rating_history %}
+                "{{ entry.contest.title|truncatechars:15 }}",
             {% endfor %}
         ];
         
         const ratingData = [
-            {% for entry in target_user.ratinghistory_set.all|dictsort:"id" %}
+            {% for entry in rating_history %}
                 {{ entry.rating }},
             {% endfor %}
         ];
 
-        // Отладка: проверь это в консоли браузера (F12), если график не рисуется
+        // Отладка
         console.log("Labels from History:", ratingLabels);
         console.log("Data from History:", ratingData);
 
@@ -162,10 +161,11 @@
         new Chart(ctx, {
             type: 'line',
             data: {
+                // Если истории нет, показываем "Start"
                 labels: ratingLabels.length > 0 ? ratingLabels : ["Start"],
                 datasets: [{
                     label: 'Rating',
-                    // Если история пуста, берем текущий рейтинг как единственную точку
+                    // Если история пуста, показываем одну точку с текущим рейтингом
                     data: ratingData.length > 0 ? ratingData : [{{ profile.rating }}],
                     borderColor: '#0d6efd',
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
@@ -184,7 +184,7 @@
                     y: { 
                         beginAtZero: false, 
                         grid: { color: '#f0f0f0' },
-                        ticks: { stepSize: 100 }
+                        ticks: { stepSize: 50 }
                     },
                     x: { grid: { display: false } }
                 },
