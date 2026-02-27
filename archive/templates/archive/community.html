@@ -12,6 +12,12 @@
         .post-card:hover { border-color: #3b82f6; }
         .post-title { font-weight: 700; color: #1e293b; text-decoration: none; font-size: 1.25rem; }
         .post-meta { font-size: 0.85rem; color: #64748b; margin-bottom: 10px; }
+        /* Фикс для кнопок сортировки */
+        .sort-tabs { margin-bottom: 20px; display: flex; gap: 10px; }
+        .sort-btn { padding: 6px 16px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: 0.3s; }
+        .sort-btn-active { background: #3b82f6; color: white !important; }
+        .sort-btn-inactive { background: white; color: #64748b; border: 1px solid #e2e8f0; }
+        .sort-btn-inactive:hover { border-color: #3b82f6; color: #3b82f6; }
     </style>
 </head>
 <body>
@@ -25,32 +31,40 @@
             </div>
         </div>
     </nav>
-    
-    <div class="mb-4">
-        <a href="?sort=new" class="btn btn-sm {% if sort == 'new' %}btn-primary{% else %}btn-outline-primary{% endif %}">Latest</a>
-        <a href="?sort=discussed" class="btn btn-sm {% if sort == 'discussed' %}btn-primary{% else %}btn-outline-primary{% endif %}">Top Discussed</a>
-    </div>
 
     <div class="container">
+        <div class="sort-tabs">
+            <a href="?sort=new" class="sort-btn {% if sort == 'new' or not sort %}sort-btn-active{% else %}sort-btn-inactive{% endif %}">Latest</a>
+            <a href="?sort=discussed" class="sort-btn {% if sort == 'discussed' %}sort-btn-active{% else %}sort-btn-inactive{% endif %}">Top Discussed</a>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold">Community Thoughts</h2>
-                <p class="text-muted">Discuss problems, shares ideas and talk about math.</p>
+                <p class="text-muted">Discuss problems, share ideas and talk about math.</p>
             </div>
             {% if user.is_authenticated %}
-            <a href="{% url 'create_post' %}" class="btn btn-primary fw-bold">Create Post</a>
+                <a href="{% url 'create_post' %}" class="btn btn-primary fw-bold shadow-sm">Create Post</a>
             {% endif %}
         </div>
 
         {% for post in posts %}
-        <div class="post-card">
+        <div class="post-card shadow-sm">
             <div class="post-meta">Posted by <b>{{ post.author.username }}</b> on {{ post.created_at|date:"M d, Y" }}</div>
             <a href="{% url 'post_detail' post.id %}" class="post-title">{{ post.title }}</a>
             <div class="mt-2 text-muted">{{ post.content|truncatewords:30 }}</div>
-            <div class="mt-3 small fw-bold text-primary">{{ post.comments.count }} comments</div>
+            <div class="mt-3 d-flex justify-content-between align-items-center">
+                <span class="small fw-bold text-primary">{{ post.comments.count }} comments</span>
+                <a href="{% url 'post_detail' post.id %}" class="btn btn-link btn-sm p-0 text-decoration-none">Read more →</a>
+            </div>
         </div>
         {% empty %}
-        <p class="text-center text-muted">No posts yet. Be the first one!</p>
+        <div class="text-center py-5">
+            <p class="text-muted fs-5">No posts yet. Be the first one!</p>
+            {% if user.is_authenticated %}
+                <a href="{% url 'create_post' %}" class="btn btn-outline-primary">Create the first post</a>
+            {% endif %}
+        </div>
         {% endfor %}
     </div>
 </body>
