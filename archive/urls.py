@@ -29,4 +29,6 @@ urlpatterns = [
 
 # Community Section
     path('community/', views.community_list, name='community'),
+    path('community/create/', views.create_post, name='create_post'), # Добавь это
+    path('community/post/<int:pk>/', views.post_detail, name='post_detail'), # И это
 ]
