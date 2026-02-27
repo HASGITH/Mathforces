@@ -340,7 +340,7 @@ def create_post(request):
         content = request.POST.get('content')
         if title and content:
             BlogPost.objects.create(author=request.user, title=title, content=content)
-            return redirect('community_list')
+            return redirect('community')
     return render(request, 'archive/create_post.html')
 
 def post_detail(request, pk):
