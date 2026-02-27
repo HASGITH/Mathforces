@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from .models import BlogPost  
 from .models import Comment
+from django.db.models import Count
 
 # --- ARCHIVE ---
 def problem_list(request):
@@ -330,8 +331,17 @@ def manual_update_submission(request, pk, action):
     return redirect('submission_detail', pk=pk)
 
 def community_list(request):
+    sort = request.GET.get('sort', 'new')
     posts = BlogPost.objects.all().select_related('author')
-    return render(request, 'archive/community.html', {'posts': posts})
+    
+    if sort == 'discussed':
+        # Сортировка по количеству комментариев
+        posts = posts.annotate(com_count=Count('comments')).order_by('-com_count', '-created_at')
+    else:
+        # По умолчанию самые новые
+        posts = posts.order_by('-created_at')
+        
+    return render(request, 'archive/community.html', {'posts': posts, 'sort': sort})
 
 @login_required
 def create_post(request):
@@ -347,7 +357,14 @@ def post_detail(request, pk):
     post = get_object_or_404(BlogPost, pk=pk)
     if request.method == 'POST' and request.user.is_authenticated:
         text = request.POST.get('text')
+        parent_id = request.POST.get('parent_id') # ID комментария, на который отвечаем
         if text:
-            Comment.objects.create(post=post, author=request.user, text=text)
+            parent_obj = None
+            if parent_id:
+                parent_obj = Comment.objects.get(id=parent_id)
+            Comment.objects.create(post=post, author=request.user, text=text, parent=parent_obj)
             return redirect('post_detail', pk=pk)
-    return render(request, 'archive/post_detail.html', {'post': post})
+    
+    # Берем только корневые комментарии (у которых нет parent)
+    comments = post.comments.filter(parent=None).order_by('-created_at')
+    return render(request, 'archive/post_detail.html', {'post': post, 'comments': comments})
