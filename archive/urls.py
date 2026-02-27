@@ -26,4 +26,9 @@ urlpatterns = [
 
     path('ranking/', views.ranking_view, name='ranking'),
     path('submission/<int:pk>/manual/<str:action>/', views.manual_update_submission, name='manual_update_submission'),
+
+# Community Section
+    path('community/', views.community_list, name='community_list'),
+    path('community/new/', views.create_post, name='create_post'),
+    path('community/post/<int:pk>/', views.post_detail, name='post_detail'),
 ]

@@ -326,3 +326,26 @@ def manual_update_submission(request, pk, action):
     submission.save()
     messages.success(request, f"Submission #{submission.id} status updated.")
     return redirect('submission_detail', pk=pk)
+
+def community_list(request):
+    posts = BlogPost.objects.all().select_related('author')
+    return render(request, 'archive/community.html', {'posts': posts})
+
+@login_required
+def create_post(request):
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        if title and content:
+            BlogPost.objects.create(author=request.user, title=title, content=content)
+            return redirect('community_list')
+    return render(request, 'archive/create_post.html')
+
+def post_detail(request, pk):
+    post = get_object_or_404(BlogPost, pk=pk)
+    if request.method == 'POST' and request.user.is_authenticated:
+        text = request.POST.get('text')
+        if text:
+            Comment.objects.create(post=post, author=request.user, text=text)
+            return redirect('post_detail', pk=pk)
+    return render(request, 'archive/post_detail.html', {'post': post})
