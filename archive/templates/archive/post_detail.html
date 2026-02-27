@@ -9,39 +9,28 @@
         body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #1e293b; }
         .navbar { background-color: #0f172a !important; }
         
-        /* Дизайн Поста */
+        /* Пост */
         .post-container { background: white; border-radius: 16px; padding: 40px; border: 1px solid #e2e8f0; margin-top: 20px; }
         .post-title { font-size: 2.5rem; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
-        .post-content { 
-            font-size: 1.15rem; 
-            line-height: 1.8; 
-            color: #334155; 
-            white-space: pre-wrap; 
-            border-left: 4px solid #3b82f6; 
-            padding-left: 25px;
-            margin: 30px 0;
-        }
+        .post-content { font-size: 1.15rem; line-height: 1.8; color: #334155; white-space: pre-wrap; border-left: 4px solid #3b82f6; padding-left: 25px; margin: 30px 0; }
 
-        /* Дизайн Комментариев */
-        .comment-section { margin-top: 50px; }
+        /* Комментарии */
         .comment-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 15px; }
         .comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
         .comment-author { font-weight: 700; color: #1e293b; }
-        .comment-date { color: #64748b; }
-        .comment-text { color: #475569; font-size: 1rem; }
         
-        /* Дизайн Ответов */
+        /* Ответы */
         .replies-container { margin-left: 50px; margin-top: 10px; border-left: 2px solid #cbd5e1; padding-left: 20px; }
         .reply-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 15px; margin-bottom: 8px; }
         
-        /* Кнопки и формы */
-        .btn-reply { 
-            background: none; border: none; color: #3b82f6; font-weight: 600; 
-            font-size: 0.85rem; padding: 0; margin-top: 10px; cursor: pointer;
-        }
-        .btn-reply:hover { text-decoration: underline; }
-        .reply-form-container { display: none; margin-top: 15px; background: #f1f5f9; padding: 15px; border-radius: 8px; }
-        
+        /* Кнопки действий */
+        .action-link { font-size: 0.8rem; font-weight: 600; text-decoration: none; margin-right: 12px; cursor: pointer; transition: 0.2s; }
+        .btn-reply { color: #3b82f6; border: none; background: none; padding: 0; }
+        .btn-edit { color: #f59e0b; }
+        .btn-delete { color: #ef4444; }
+        .action-link:hover { text-decoration: underline; opacity: 0.8; }
+
+        .edit-form-container, .reply-form-container { display: none; margin-top: 15px; background: #f1f5f9; padding: 15px; border-radius: 8px; }
         .main-comment-form { background: #f8fafc; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; }
     </style>
 </head>
@@ -61,14 +50,10 @@
                 
                 <article class="post-container shadow-sm">
                     <h1 class="post-title">{{ post.title }}</h1>
-                    <div class="d-flex align-items-center text-muted small mb-4">
-                        <span class="me-3">By <b class="text-dark">{{ post.author.username }}</b></span>
-                        <span>Published on {{ post.created_at|date:"M d, Y" }}</span>
+                    <div class="text-muted small mb-4">
+                        By <b class="text-dark">{{ post.author.username }}</b> • {{ post.created_at|date:"M d, Y" }}
                     </div>
-                    
-                    <div class="post-content">
-                        {{ post.content }}
-                    </div>
+                    <div class="post-content">{{ post.content }}</div>
                 </article>
 
                 <section class="comment-section">
@@ -76,47 +61,54 @@
 
                     {% if user.is_authenticated %}
                     <div class="main-comment-form mb-5 shadow-sm">
-                        <h5 class="fw-bold mb-3">Add to discussion</h5>
                         <form method="POST">
                             {% csrf_token %}
-                            <div class="mb-3">
-                                <textarea name="text" class="form-control" rows="3" placeholder="What are your thoughts?" required></textarea>
-                            </div>
+                            <textarea name="text" class="form-control mb-3" rows="3" placeholder="What are your thoughts?" required></textarea>
                             <button type="submit" class="btn btn-primary fw-bold px-4">Post Comment</button>
                         </form>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-light border mb-5 text-center">
-                        <a href="{% url 'login' %}" class="fw-bold">Log in</a> to join the conversation.
                     </div>
                     {% endif %}
 
                     <div class="comments-list">
                         {% for comment in post.comments.all %}
-                            {% if not comment.parent %}  <div class="comment-item shadow-sm">
+                            {% if not comment.parent %}
+                            <div class="comment-item shadow-sm" id="comment-{{ comment.id }}">
                                 <div class="comment-header">
                                     <span class="comment-author">{{ comment.author.username }}</span>
-                                    <span class="comment-date">{{ comment.created_at|timesince }} ago</span>
+                                    <span class="text-muted">{{ comment.created_at|timesince }} ago</span>
                                 </div>
-                                <div class="comment-text">
-                                    {{ comment.text }}
+                                
+                                <div class="comment-text" id="text-{{ comment.id }}">{{ comment.text }}</div>
+
+                                <div class="mt-3">
+                                    {% if user.is_authenticated %}
+                                        <button class="action-link btn-reply" onclick="toggleForm('reply-form-{{ comment.id }}')">Reply</button>
+                                        
+                                        {% if user == comment.author or user.is_superuser %}
+                                            <button class="action-link btn-edit" onclick="toggleForm('edit-form-{{ comment.id }}')">Edit</button>
+                                            <a href="{% url 'delete_comment' comment.id %}" class="action-link btn-delete" onclick="return confirm('Delete this comment?')">Delete</a>
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
 
-                                {% if user.is_authenticated %}
-                                <button class="btn-reply" onclick="toggleReplyForm('{{ comment.id }}')">Reply to this thread</button>
-                                
+                                <div id="edit-form-{{ comment.id }}" class="edit-form-container">
+                                    <form action="{% url 'edit_comment' comment.id %}" method="POST">
+                                        {% csrf_token %}
+                                        <textarea name="text" class="form-control mb-2" rows="2">{{ comment.text }}</textarea>
+                                        <button type="submit" class="btn btn-sm btn-warning">Save</button>
+                                        <button type="button" class="btn btn-sm btn-link" onclick="toggleForm('edit-form-{{ comment.id }}')">Cancel</button>
+                                    </form>
+                                </div>
+
                                 <div id="reply-form-{{ comment.id }}" class="reply-form-container">
                                     <form method="POST">
                                         {% csrf_token %}
                                         <input type="hidden" name="parent_id" value="{{ comment.id }}">
-                                        <div class="mb-2">
-                                            <textarea name="text" class="form-control form-control-sm" rows="2" placeholder="Write a reply..." required></textarea>
-                                        </div>
-                                        <button type="submit" class="btn btn-sm btn-primary">Send Reply</button>
-                                        <button type="button" class="btn btn-sm btn-link text-muted" onclick="toggleReplyForm('{{ comment.id }}')">Cancel</button>
+                                        <textarea name="text" class="form-control mb-2" rows="2" placeholder="Write a reply..." required></textarea>
+                                        <button type="submit" class="btn btn-sm btn-primary">Send</button>
+                                        <button type="button" class="btn btn-sm btn-link" onclick="toggleForm('reply-form-{{ comment.id }}')">Cancel</button>
                                     </form>
                                 </div>
-                                {% endif %}
                             </div>
 
                             <div class="replies-container">
@@ -124,35 +116,39 @@
                                 <div class="reply-item shadow-sm">
                                     <div class="comment-header">
                                         <span class="comment-author">{{ reply.author.username }}</span>
-                                        <span class="comment-date">{{ reply.created_at|timesince }} ago</span>
+                                        <span class="text-muted small">{{ reply.created_at|timesince }} ago</span>
                                     </div>
-                                    <div class="comment-text small">
-                                        {{ reply.text }}
-                                    </div>
+                                    <div class="comment-text">{{ reply.text }}</div>
+                                    
+                                    {% if user == reply.author or user.is_superuser %}
+                                        <div class="mt-2">
+                                            <button class="action-link btn-edit" onclick="toggleForm('edit-reply-{{ reply.id }}')">Edit</button>
+                                            <a href="{% url 'delete_comment' reply.id %}" class="action-link btn-delete" onclick="return confirm('Delete this reply?')">Delete</a>
+                                        </div>
+                                        <div id="edit-reply-{{ reply.id }}" class="edit-form-container">
+                                            <form action="{% url 'edit_comment' reply.id %}" method="POST">
+                                                {% csrf_token %}
+                                                <textarea name="text" class="form-control mb-2" rows="2">{{ reply.text }}</textarea>
+                                                <button type="submit" class="btn btn-sm btn-warning">Save</button>
+                                                <button type="button" class="btn btn-sm btn-link" onclick="toggleForm('edit-reply-{{ reply.id }}')">Cancel</button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
                                 </div>
                                 {% endfor %}
                             </div>
                             {% endif %}
-                        {% empty %}
-                            <div class="text-center py-5 text-muted">
-                                <p>No comments yet. Start the discussion!</p>
-                            </div>
                         {% endfor %}
                     </div>
                 </section>
-
             </div>
         </div>
     </div>
 
     <script>
-        function toggleReplyForm(commentId) {
-            const form = document.getElementById(`reply-form-${commentId}`);
-            if (form.style.display === "block") {
-                form.style.display = "none";
-            } else {
-                form.style.display = "block";
-            }
+        function toggleForm(id) {
+            const form = document.getElementById(id);
+            form.style.display = (form.style.display === "block") ? "none" : "block";
         }
     </script>
 </body>

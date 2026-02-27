@@ -31,4 +31,7 @@ urlpatterns = [
     path('community/', views.community_list, name='community'),
     path('community/create/', views.create_post, name='create_post'), # Добавь это
     path('community/post/<int:pk>/', views.post_detail, name='post_detail'), # И это
+
+    path('comment/<int:pk>/edit/', views.edit_comment, name='edit_comment'),
+    path('comment/<int:pk>/delete/', views.delete_comment, name='delete_comment'),
 ]

@@ -368,3 +368,27 @@ def post_detail(request, pk):
     # Берем только корневые комментарии (у которых нет parent)
     comments = post.comments.filter(parent=None).order_by('-created_at')
     return render(request, 'archive/post_detail.html', {'post': post, 'comments': comments})
+
+@login_required
+def edit_comment(request, pk):
+    comment = get_object_or_404(Comment, pk=pk)
+    # Проверка прав: автор или админ
+    if comment.author != request.user and not request.user.is_superuser:
+        return redirect('post_detail', pk=comment.post.pk)
+    
+    if request.method == 'POST':
+        new_text = request.POST.get('text')
+        if new_text:
+            comment.text = new_text
+            comment.save()
+            return redirect('post_detail', pk=comment.post.pk)
+    
+    return render(request, 'archive/edit_comment.html', {'comment': comment})
+
+@login_required
+def delete_comment(request, pk):
+    comment = get_object_or_404(Comment, pk=pk)
+    post_pk = comment.post.pk
+    if comment.author == request.user or request.user.is_superuser:
+        comment.delete()
+    return redirect('post_detail', pk=post_pk)
