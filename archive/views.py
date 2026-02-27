@@ -11,6 +11,8 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
+from .models import BlogPost  
+from .models import Comment
 
 # --- ARCHIVE ---
 def problem_list(request):
