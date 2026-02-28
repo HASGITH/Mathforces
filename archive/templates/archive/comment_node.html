@@ -1,0 +1,49 @@
+{% load static %}
+<div class="comment-item shadow-sm mb-3" id="comment-{{ comment.id }}" 
+     style="margin-left: {% if level > 0 %}30px{% else %}0{% endif %}; border-left: {% if level > 0 %}2px solid #dee2e6{% else %}none{% endif %}; padding-left: {% if level > 0 %}15px{% else %}0{% endif %};">
+    
+    <div class="comment-header">
+        <span class="comment-author">{{ comment.author.username }}</span>
+        <span class="text-muted small">{{ comment.created_at|timesince }} ago</span>
+    </div>
+    
+    <div class="comment-text" id="text-{{ comment.id }}">{{ comment.text }}</div>
+
+    <div class="mt-2">
+        {% if user.is_authenticated %}
+            <button class="action-link btn-reply text-primary border-0 bg-transparent" onclick="toggleForm('reply-form-{{ comment.id }}')">Reply</button>
+            
+            {% if user == comment.author or user.is_superuser %}
+                <button class="action-link btn-edit text-warning border-0 bg-transparent" onclick="toggleForm('edit-form-{{ comment.id }}')">Edit</button>
+                <a href="{% url 'delete_comment' comment.id %}" class="action-link btn-delete text-danger text-decoration-none" onclick="return confirm('Delete this?')">Delete</a>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div id="edit-form-{{ comment.id }}" class="edit-form-container" style="display:none; margin-top: 10px;">
+        <form action="{% url 'edit_comment' comment.id %}" method="POST">
+            {% csrf_token %}
+            <textarea name="text" class="form-control mb-2" rows="2">{{ comment.text }}</textarea>
+            <button type="submit" class="btn btn-sm btn-warning">Save</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleForm('edit-form-{{ comment.id }}')">Cancel</button>
+        </form>
+    </div>
+
+    <div id="reply-form-{{ comment.id }}" class="reply-form-container" style="display:none; margin-top: 10px;">
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="parent_id" value="{{ comment.id }}">
+            <textarea name="text" class="form-control mb-2" rows="2" placeholder="Write a reply..." required></textarea>
+            <button type="submit" class="btn btn-sm btn-primary">Send Reply</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleForm('reply-form-{{ comment.id }}')">Cancel</button>
+        </form>
+    </div>
+
+    {% if comment.replies.all and level < 20 %}
+        <div class="replies-list mt-3">
+            {% for reply in comment.replies.all %}
+                {% include "archive/comment_node.html" with comment=reply level=level|add:1 %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
