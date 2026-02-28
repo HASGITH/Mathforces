@@ -114,6 +114,8 @@ class BlogPost(models.Model):
     # Связь с конкретной задачей (необязательно)
     related_problem = models.ForeignKey(Problem, on_delete=models.SET_NULL, null=True, blank=True, related_name='discussions')
 
+    is_featured = models.BooleanField(default=False) # Новое поле
+
     class Meta:
         ordering = ['-created_at']
 

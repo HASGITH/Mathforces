@@ -34,8 +34,9 @@
 
     <div class="container">
         <div class="sort-tabs">
-            <a href="?sort=new" class="sort-btn {% if sort == 'new' or not sort %}sort-btn-active{% else %}sort-btn-inactive{% endif %}">Latest</a>
-            <a href="?sort=discussed" class="sort-btn {% if sort == 'discussed' %}sort-btn-active{% else %}sort-btn-inactive{% endif %}">Top Discussed</a>
+            <a href="?sort=new" class="sort-btn {% if not sort or sort == 'new' %}sort-btn-active{% endif %}">Latest</a>
+            <a href="?sort=featured" class="sort-btn {% if sort == 'featured' %}sort-btn-active{% endif %}">⭐ Featured</a>
+            <a href="?sort=discussed" class="sort-btn {% if sort == 'discussed' %}sort-btn-active{% endif %}">Top Discussed</a>
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-4">

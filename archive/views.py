@@ -333,8 +333,10 @@ def manual_update_submission(request, pk, action):
 def community_list(request):
     sort = request.GET.get('sort', 'new')
     posts = BlogPost.objects.all().select_related('author')
-    
-    if sort == 'discussed':
+
+    if sort == 'featured':
+        posts = BlogPost.objects.filter(is_featured=True).order_by('-created_at')
+    elif sort == 'discussed':
         # Сортировка по количеству комментариев
         posts = posts.annotate(com_count=Count('comments')).order_by('-com_count', '-created_at')
     else:
@@ -392,3 +394,32 @@ def delete_comment(request, pk):
     if comment.author == request.user or request.user.is_superuser:
         comment.delete()
     return redirect('post_detail', pk=post_pk)
+
+@login_required
+def edit_post(request, pk):
+    post = get_object_or_404(BlogPost, pk=pk)
+    if post.author != request.user and not request.user.is_superuser:
+        return redirect('post_detail', pk=pk)
+    
+    if request.method == 'POST':
+        post.title = request.POST.get('title')
+        post.content = request.POST.get('content')
+        post.save()
+        return redirect('post_detail', pk=pk)
+    return render(request, 'archive/edit_post.html', {'post': post})
+
+@login_required
+def delete_post(request, pk):
+    post = get_object_or_404(BlogPost, pk=pk)
+    if post.author == request.user or request.user.is_superuser:
+        post.delete()
+    return redirect('community')
+
+@login_required
+def toggle_featured(request, pk):
+    if not request.user.is_superuser: # Только ТЫ можешь это делать
+        return redirect('post_detail', pk=pk)
+    post = get_object_or_404(BlogPost, pk=pk)
+    post.is_featured = not post.is_featured
+    post.save()
+    return redirect('post_detail', pk=pk)
