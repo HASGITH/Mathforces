@@ -1,4 +1,4 @@
-{% load static %}
+{% load markdown_filter %}
 <div class="comment-item shadow-sm mb-3" id="comment-{{ comment.id }}" 
      style="
         /* Сохраняем твою логику отступов слева */
@@ -22,7 +22,7 @@
     </div>
     
     <div class="comment-text mt-2" id="text-{{ comment.id }}" style="margin-left: {% if level == 0 %}15px{% else %}0{% endif %};">
-        {{ comment.text }}
+        {{ comment.text|markdown|safe }}
     </div>
 
     <div class="mt-2" style="margin-left: {% if level == 0 %}15px{% else %}0{% endif %};">

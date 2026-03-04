@@ -4,11 +4,25 @@
     <meta charset="UTF-8">
     <title>Create Post - Mathforces</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; }
         .navbar { background-color: #0f172a !important; }
         .form-container { background: white; border-radius: 12px; padding: 30px; border: 1px solid #e2e8f0; margin-top: 20px; }
+        .markdown-info { background-color: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+        .markdown-info h6 { color: #0369a1; margin-bottom: 10px; font-weight: 600; }
+        .markdown-tips { columns: 2; gap: 20px; font-size: 0.9rem; color: #475569; }
+        .markdown-tips code { background-color: white; padding: 2px 6px; border-radius: 3px; color: #dc2626; }
+        .preview-pane { background-color: #f8fafc; border-radius: 8px; padding: 20px; border: 1px solid #e2e8f0; margin-top: 20px; display: none; }
+        .preview-pane.active { display: block; }
+        .preview-content { font-size: 1rem; line-height: 1.8; color: #334155; }
+        .preview-content h1, .preview-content h2, .preview-content h3 { margin-top: 16px; margin-bottom: 8px; font-weight: 700; }
+        .preview-content code { background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px; color: #dc2626; }
+        .preview-content pre { background-color: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 12px 0; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { padding: 8px 16px; border: 2px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .tab-btn.active { border-color: #0ea5e9; color: #0ea5e9; background-color: #f0f9ff; }
     </style>
 </head>
 <body>
@@ -20,19 +34,50 @@
 
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-8 form-container">
-                <h2 class="fw-bold mb-4">Create New Post</h2>
-                <form method="POST">
+            <div class="col-md-10 form-container">
+                <h2 class="fw-bold mb-2">Create New Post</h2>
+                <p class="text-muted mb-4">Share your thoughts on problems and math in Markdown format</p>
+                
+                <div class="markdown-info">
+                    <h6>📝 Markdown Basics</h6>
+                    <div class="markdown-tips">
+                        <div><code>**bold**</code> for bold text</div>
+                        <div><code>_italic_</code> for italic</div>
+                        <div><code>`code`</code> for inline code</div>
+                        <div><code>```code block```</code> for code blocks</div>
+                        <div><code># Heading</code> for headings</div>
+                        <div><code>- Item</code> for lists</div>
+                    </div>
+                    <div class="mt-3">
+                        <a href="{% url 'markdown_guide' %}" class="btn btn-sm btn-outline-info">📖 Full Markdown Guide</a>
+                    </div>
+                </div>
+
+                <form method="POST" id="postForm">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label class="form-label fw-bold">Title</label>
                         <input type="text" name="title" class="form-control" placeholder="Enter post title" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Content</label>
-                        <textarea name="content" class="form-control" rows="8" placeholder="What's on your mind?" required></textarea>
+                    
+                    <div class="tab-buttons">
+                        <button type="button" class="tab-btn active" onclick="switchTab('editor')">Write</button>
+                        <button type="button" class="tab-btn" onclick="switchTab('preview')">Preview</button>
                     </div>
-                    <div class="d-flex justify-content-between">
+
+                    <div id="editor" class="tab-content">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Content (Markdown)</label>
+                            <textarea name="content" id="contentTextarea" class="form-control" rows="12" placeholder="Write your post in Markdown..." required></textarea>
+                        </div>
+                    </div>
+
+                    <div id="preview" class="tab-content preview-pane">
+                        <h5 class="fw-bold mb-3">Preview</h5>
+                        <div id="previewContent" class="preview-content"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
                         <a href="{% url 'community' %}" class="btn btn-light border">Cancel</a>
                         <button type="submit" class="btn btn-primary fw-bold px-4">Publish Post</button>
                     </div>
@@ -40,5 +85,30 @@
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            if (tab === 'preview') {
+                document.getElementById('preview').classList.add('active');
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                updatePreview();
+            } else {
+                document.getElementById('editor').classList.add('active');
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            }
+        }
+
+        function updatePreview() {
+            const content = document.getElementById('contentTextarea').value;
+            const previewDiv = document.getElementById('previewContent');
+            previewDiv.innerHTML = marked.parse(content);
+        }
+
+        document.getElementById('contentTextarea').addEventListener('input', updatePreview);
+    </script>
 </body>
 </html>

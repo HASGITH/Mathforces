@@ -423,3 +423,6 @@ def toggle_featured(request, pk):
     post.is_featured = not post.is_featured
     post.save()
     return redirect('post_detail', pk=pk)
+
+def markdown_guide(request):
+    return render(request, 'archive/markdown_guide.html')
